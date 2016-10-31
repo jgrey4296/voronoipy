@@ -285,7 +285,7 @@ class HalfEdge:
             raise Exception("By this stage all edges should be finite")
 
         #Convert to an actual line representation, for intersection
-        logging.info("Constraining {} - {}".format(self.index,self.twin.index))
+        logging.debug("Constraining {} - {}".format(self.index,self.twin.index))
         asLine = Line.newLine(self.origin,self.twin.origin,bbox)
         asLine.constrain(*bbox)
         return asLine.bounds()
@@ -314,12 +314,12 @@ class HalfEdge:
             otherCmp = self.twin < self
             logging.debug("Cmp Pair: {} - {}".format(cmp,otherCmp))
             if cmp != otherCmp:
-                logging.info("Mismatched Indices: {}-{}".format(self.index,self.twin.index))
-                logging.info("Mismatched: {} - {}".format(self,self.twin))
+                logging.debug("Mismatched Indices: {}-{}".format(self.index,self.twin.index))
+                logging.debug("Mismatched: {} - {}".format(self,self.twin))
                 raise Exception("Mismatched orientations")
             logging.debug("CMP: {}".format(cmp))
             if cmp:
-                logging.warning("Swapping the vertices of line {} and {}".format(self.index,self.twin.index))
+                logging.debug("Swapping the vertices of line {} and {}".format(self.index,self.twin.index))
                 #unregister
                 self.twin.origin.unregisterHalfEdge(self.twin)
                 self.origin.unregisterHalfEdge(self)
@@ -612,7 +612,7 @@ class DCEL(object):
         """ Verify each face, connecting non-connected edges, taking into account
             corners of the bounding box passed in, which connects using a pair of edges        
         """
-        logging.info("---------- Completing faces")
+        logging.debug("---------- Completing faces")
         if bbox is None:
             raise Exception("Completing faces requires a bbox provided")
         for f in self.faces:
@@ -710,7 +710,7 @@ class DCEL(object):
 
     def verify_edges(self):
         #make sure every halfedge is only used once
-        logging.info("Verifying edges")
+        logging.debug("Verifying edges")
         troublesomeEdges = [] #for debugging
         usedEdges = {}
         for f in self.faces:
@@ -724,6 +724,6 @@ class DCEL(object):
                     usedEdges[e.index] = f.index
                 else:
                     raise Exception("Edge {} in {} already used in {}".format(e.index,f.index,usedEdges[e.index]))
-        logging.info("Edges verified")
+        logging.debug("Edges verified")
         return troublesomeEdges
         
