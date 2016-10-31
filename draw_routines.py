@@ -11,14 +11,10 @@ from scipy.interpolate import splprep
 from scipy.interpolate import splev
 import utils
 import IPython
-import utils
 import logging
 from random import choice
 #Drawing classes
-from ssClass import SandSpline
-from branches import Branches
 from voronoi import Voronoi
-from voronoiexperiments import VExperiment
 
 #DEBUG Stages and amounts
 DRAW_INTERMEDIATE = False
@@ -53,10 +49,8 @@ branchInstance = None
 voronoiInstance = None
 vexpInstance = None
 
-
-
 #top level draw command:
-def draw(ctx, drawOption,X_size,Y_size,surface=None,filenamebase="cairo_render"):
+def draw(ctx,X_size,Y_size,surface=None,filenamebase="cairo_render"):
     """ The generic setup function main calls for all drawing """
     logging.info("Drawing: {}".format(drawOption))
     #modify and update globals:
@@ -72,97 +66,17 @@ def draw(ctx, drawOption,X_size,Y_size,surface=None,filenamebase="cairo_render")
     cairo_context = ctx
     filename = filenamebase
     op = ctx.get_operator()
-    #setup the draw instances
-    drawInstance = SandSpline(ctx,(X_size,Y_size))
-    branchInstance = Branches(ctx,(X_size,Y_size))
     voronoiInstance = Voronoi(ctx,(X_size,Y_size),voronoi_nodes)
-    vexpInstance = VExperiment(ctx,(X_size,Y_size),voronoi_nodes)
-    #ctx.set_operator(OPERATOR_SOURCE)
     utils.clear_canvas(ctx)
-
-    #Initialise the base image:
-    if drawOption == 'circles':
-        initCircles()
-        iterateAndDraw()
-    elif drawOption == "lines":
-        initLines()
-        iterateAndDraw()
-    elif drawOption == "singleLine":
-        initSpecificLine()
-        iterateAndDraw()
-    elif drawOption == "bezier":
-        bezierTest()
-        iterateAndDraw()
-    elif drawOption == "manycircles":
-        manyCircles()
-        iterateAndDraw()
-    elif drawOption == "branch":
-        drawBranch(X_size,Y_size)
-    elif drawOption == "voronoi":
-        drawVoronoi(X_size,Y_size)
-    elif drawOption == "vexp":
-        drawVExp(X_size,Y_size)
-    elif drawOption == "textTest":
-        drawTextTest(X_size,Y_size)
-    else:
-        raise Exception("Unrecognized draw routine",drawOption)
-
+    
+    drawVoronoi(X_size,Y_size)
+    
     if surface:
+        logging.info("Writing final image")
         utils.write_to_png(surface,filenamebase)
     
-def iterateAndDraw():
-    """ Run transforms repeatedly on non-voronoi drawing classes """
-    for i in range(iterationNum):
-        logging.info('step:',i)
-        drawInstance.step(granulate,interpolateGranules)
-    
-    drawInstance.draw(interpolate,interpolateGrains)
-#------------------------------
-
-def initCircles():
-    """ Add a number of circles to the drawing instance, ready for deformation """
-    for i in range(numOfElements):
-        logging.info('adding circle:',i)
-        drawInstance.addCircle()
-
-def initLines():
-    """ Add a number of lines to the drawing instance, ready for deformation """
-    for i in range(numOfElements):
-        logging.info('adding line:',i)
-        line = [x for x in random(4)]
-        drawInstance.addLine(*line)
-
-def initSpecificLine():
-    """ Add just a single line  """
-    drawInstance.addLine(0.1,0.5,0.9,0.5)
-
-def bezierTest():
-    """ Setup a simple bezier curve for deformation  """
-    start = [0.0,0.5]
-    cp = [0.4,0.6]
-    cp2 = [0.8,0.1]
-    end = [1.0,0.5]
-    drawInstance.addBezier2cp(start,cp,cp2,end)
-
-def manyCircles():
-    """ Add a number of circles for deformation """
-    xs = np.linspace(0.1,0.9,10)
-    ys = np.linspace(0.1,0.9,10)
-
-    for x in xs:
-        for y in ys:
-            drawInstance.addCircle(x,y,0.0002,0.0003)
-    
-def drawBranch(X_size,Y_size):
-    """ Incomplete, intended to draw trees  """
-    branchInstance.addBranch()
-    for i in np.arange(branchIterations):
-        logging.info('Branch Growth:',i)
-        branchInstance.grow(i)
-    branchInstance.draw()
-
 #----------
-# VORONOI:
+# VORONOI Generation:
 #----------
 def drawVoronoi(X_size,Y_size):
     """ Step through the construction of a voronoi diagram """
@@ -274,27 +188,6 @@ def drawVoronoi(X_size,Y_size):
             utils.write_to_png(cairo_surface,faceName)
     
 
-
-
     voronoiInstance.draw_voronoi_diagram()
     finalFilename = "{}-FINAL".format(filename)
     utils.write_to_png(cairo_surface,finalFilename,i+1)
-
-def drawVExp(X_size,Y_size):
-    vexpInstance.drawTest()
-    
-def drawTextTest(x,y):
-    cairo_context.set_font_size(0.025)
-    cairo_context.set_source_rgba(*[0,1,1,1])
-    cairo_context.move_to(0.2,0.5)
-    cairo_context.show_text("hello")
-    utils.write_to_png(cairo_surface,"text_test")                  
-
-    
-def example_multi_render(Xs,Ys):
-    for i in range(1000):
-        #do something
-        if i%10:
-            utils.write_to_png(surface,filename,i=i)
-
-            
