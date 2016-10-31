@@ -188,7 +188,7 @@ class HalfEdge:
         logging.debug("HELT: {} - {}".format(self.index,other.index))
         retValue = False
         #flip y axis for ease
-        centre = [0,1] + (self.face.getCentre() * [1,-1])
+        centre = [0,1] + (self.face.getCentroid() * [1,-1])
         a = [0,1] + (self.origin.toArray() * [1,-1])
         b = [0,1] + (other.origin.toArray() * [1,-1])
         logging.debug("Comp: {}, {}, {}".format(centre,a,b))
@@ -387,7 +387,10 @@ class Face(object):
         self.edgeList = []
         self.index = Face.currentIndex
         Face.currentIndex += 1
+        #mark face for cleanup:
+        self.markedForCleanup = False
 
+        
     def removeEdge(self,edge):
         self.innerComponents.remove(edge)
         self.edgeList.remove(edge)
@@ -404,15 +407,31 @@ class Face(object):
         #logging.debug("Bbox found  : {}".format(bbox))
         return bbox
 
-    
-    def getCentre(self):
+    def getCentroid(self):
         bbox = self.get_bbox()
         #max - min /2
         norm = bbox[1,:] + bbox[0,:]
         centre = norm * 0.5
-        #logging.debug("Centre of {} : {}".format(self.index,centre))
         return centre
-        
+
+    
+    def __getCentroid(self):
+        vertices = [x.origin for x in self.edgeList if x.origin is not None]
+        centroid = np.array([0.0,0.0])
+        signedArea = 0.0
+        for i,v in enumerate(vertices):
+            if i+1 < len(vertices):
+                n_v = vertices[i+1]
+            else:
+                n_v = vertices[0]
+            a = v.x*n_v.y - n_v.x*v.y
+            signedArea += a
+            centroid += [(v.x+n_v.x)*a,(v.y+n_v.y)*a]
+
+        signedArea *= 0.5
+        if signedArea != 0:
+            centroid /= (6*signedArea)
+        return centroid
         
     def getEdges(self):
         return self.edgeList
@@ -620,6 +639,9 @@ class DCEL(object):
             #sort edges going anti-clockwise
             f.sort_edges()
             edgeList = f.getEdges().copy()
+            if len(edgeList) == 0:
+                f.markedForCleanup = True
+                continue
             #reverse to allow popping off
             edgeList.reverse()
             first_edge = edgeList[-1]
@@ -687,6 +709,12 @@ class DCEL(object):
             logging.debug("Result: {}".format([x.index for x in f.getEdges()]))
             logging.debug("----")
 
+        self.delete_marked_faces()
+            
+    def delete_marked_faces(self):
+        self.faces = [x for x in self.faces if not x.markedForCleanup]
+
+            
     def create_corner_vertex(self,e1,e2,bbox):
         """ Given two edges, create the vertex that corners them """
         if e1 == e2:
