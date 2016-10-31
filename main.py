@@ -1,13 +1,15 @@
 #!/users/jgrey/anaconda/bin/python
-
 import sys
 import time
 import math
 import cairo
 import draw_routines
 import logging
+import voronoi
+import utils
 
-#constants
+#constants:
+#Size of the screen:
 N = 12
 X = pow(2,N)
 Y = pow(2,N)
@@ -15,6 +17,7 @@ imgPath = "./imgs/"
 imgName = "initialTest"
 currentTime = time.gmtime()
 FONT_SIZE = 0.03
+VORONOI_SIZE = 200
 #format the name of the image to be saved thusly:
 saveString = "%s%s_%s-%s-%s_%s-%s" % (imgPath,
                                           imgName,
@@ -24,16 +27,9 @@ saveString = "%s%s_%s-%s-%s_%s-%s" % (imgPath,
                                           currentTime.tm_mon,
                                           currentTime.tm_year)
 
-
-#get the type of drawing to do from the command line argument:
-if len(sys.argv) > 1:
-    drawRoutineName = sys.argv[1]
-else:
-    drawRoutineName = "circles"
-
 #setup logging:
 LOGLEVEL = logging.DEBUG
-logFileName = drawRoutineName + ".log"
+logFileName = "voronoi.log"
 logging.basicConfig(filename=logFileName,level=LOGLEVEL,filemode='w')
 
 console = logging.StreamHandler()
@@ -46,11 +42,17 @@ ctx = cairo.Context(surface)
 ctx.scale(X,Y)
 ctx.set_font_size(FONT_SIZE)
 
+#Setup the voronoi diagram:
+voronoiInstance = voronoi.Voronoi(ctx,(X,Y),num_of_nodes=VORONOI_SIZE)
+voronoiInstance.initGraph()
+voronoiInstance.calculate_to_completion()
 
-#Drawing:
-draw_routines.draw(ctx,drawRoutineName,X,Y,surface=surface,filenamebase=saveString)
-    
-# #write to file: - DEPRECATED: moved into draw routines
-# print('Saving')
-# surface.write_to_png (saveString)
+dcel = voronoiInstance.finalise_DCEL()
 
+#repeatedly relax 
+
+#Manipulate DCEL to create map
+
+#Draw 
+utils.drawDCEL(ctx,dcel)
+utils.write_to_png(surface,saveString)
