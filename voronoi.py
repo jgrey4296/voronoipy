@@ -72,9 +72,10 @@ class Voronoi(object):
         self.dcel = DCEL(bbox=BBOX) #init the dcel
         values = data
         if values is None and not rerun:
-            self.load_graph()
+            values = self.load_graph()
         #create a (n,2) array of coordinates for the sites, if no data has been loaded
-        if values is None:
+        if values is None or len(values) != self.nodeSize:
+            logging.debug("Creating values")
             for n in range(self.nodeSize):
                 newSite = random.random(2)
                 if values is None:
