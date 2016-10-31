@@ -17,7 +17,8 @@ imgPath = "./imgs/"
 imgName = "initialTest"
 currentTime = time.gmtime()
 FONT_SIZE = 0.03
-VORONOI_SIZE = 200
+VORONOI_SIZE = 20
+RELAXATION_AMNT = 10
 #format the name of the image to be saved thusly:
 saveString = "%s%s_%s-%s-%s_%s-%s" % (imgPath,
                                           imgName,
@@ -47,12 +48,20 @@ voronoiInstance = voronoi.Voronoi(ctx,(X,Y),num_of_nodes=VORONOI_SIZE)
 voronoiInstance.initGraph()
 voronoiInstance.calculate_to_completion()
 
+#repeatedly relax and rerun
+for i in range(RELAXATION_AMNT):
+    logging.debug("Relaxing iteration: {}".format(i))
+    dcel = voronoiInstance.finalise_DCEL()
+    utils.clear_canvas(ctx)
+    utils.drawDCEL(ctx,dcel)
+    utils.write_to_png(surface,"{}__relaxed_{}".format(saveString,i))
+    voronoiInstance.relax()
+
+
 dcel = voronoiInstance.finalise_DCEL()
-
-#repeatedly relax 
-
 #Manipulate DCEL to create map
 
-#Draw 
+#Draw
+utils.clear_canvas(ctx)
 utils.drawDCEL(ctx,dcel)
 utils.write_to_png(surface,saveString)
