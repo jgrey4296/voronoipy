@@ -14,6 +14,7 @@ import sys
 from Parabola import Parabola
 from beachline import BeachLine,Left,Right,Centre,NilNode
 from dcel import DCEL
+from os.path import isfile
 import logging
 
 #If true, will draw each frame as infinite lines are made finite
@@ -65,13 +66,13 @@ class Voronoi(object):
         #storage of breakpoint tuples -> halfedge
         self.halfEdges = {}
 
-    def initGraph(self,data=None):
+    def initGraph(self,data=None,rerun=False):
         """ Create a graph of initial random sites """
-
-        #TODO: auto load pkl
         logging.debug("Initialising graph")
         self.dcel = DCEL(bbox=BBOX) #init the dcel
         values = data
+        if values is None and not rerun:
+            self.load_graph()
         #create a (n,2) array of coordinates for the sites, if no data has been loaded
         if values is None:
             for n in range(self.nodeSize):
@@ -82,18 +83,38 @@ class Voronoi(object):
                     values = np.row_stack((values,newSite))
 
         #create the site events:
+        usedCoords = []
         for site in values:
+            if (site[0],site[1]) in usedCoords:
+                logging.warn("Skipping: {}".format(site))
+                continue
             futureFace = self.dcel.newFace()
             event = SiteEvent(site,face=futureFace)
             heapq.heappush(self.events,event)
             self.sites.append(event)
+            usedCoords.append((site[0],site[1]))
         
         #Create beachline
         self.beachline = BeachLine()
+
         #Save the nodes
-        self.save_graph(values)
+        if not rerun:
+            self.save_graph(values)
         return values
 
+    def relax(self):
+        """ Having calculated the voronoi diagram, use the centroids of 
+            the faces instead of the sites, and retrun the calculation
+        """
+        if len(self.events) != 0:
+            raise Exception("Calculation incomplete")
+        newSites = [x.getCentroid() for x in self.dcel.faces]
+        self.initGraph(data=newSites,rerun=True)
+        self.calculate_to_completion()
+
+        
+        
+    
     def calculate_to_completion(self):
         finished = False
         i = 0
@@ -297,8 +318,9 @@ class Voronoi(object):
             pickle.dump(values,f)
         
     def load_graph(self):
-        with open(SAVENAME,'rb') as f:
-            return pickle.load(f)
+        if isfile(SAVENAME):
+            with open(SAVENAME,'rb') as f:
+                return pickle.load(f)
         
     #-------------------- Fortune Methods
     def _calculate_circle_events(self,node,left=True,right=True):
