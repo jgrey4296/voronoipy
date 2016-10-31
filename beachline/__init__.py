@@ -376,6 +376,8 @@ class Node(object):
         elif the_range[1] < x:
             return Right()
         else:
+            logging.info("Comparison failure: {} < {} < {}".format(the_range[0],x,the_range[1]))
+            IPython.embed()
             raise Exception("Comparison failure")
 
         
