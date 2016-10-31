@@ -79,12 +79,12 @@ def draw_dcel_single_face(ctx,dcel,face,clear=True,force_centre=False):
     if len(face.edgeList) < 2 :
         return
     if force_centre:
-        centre = face.getCentre()
+        centre = face.getCentroid()
         invCentre = -centre
         ctx.translate(*invCentre)
         ctx.translate(0.5,0.5)
     ctx.set_line_width(0.004)
-    faceCentre = face.getCentre()
+    faceCentre = face.getCentroid()
     drawText(ctx,*faceCentre,str("F: {}".format(face.index)))
     startRadius = 0.009
     #Draw face edges:
@@ -154,7 +154,7 @@ def draw_dcel_halfEdge(ctx,halfEdge,clear=True):
         drawCircle(ctx,v2.x,v2.y,0.01)
 
         if halfEdge.face is not None:
-            centre = halfEdge.face.getCentre()
+            centre = halfEdge.face.getCentroid()
             drawText(ctx,*centre,"F:{}.{}".format(halfEdge.face.index,halfEdge.index))
         else:
             drawText(ctx,*centre,"HE: {}".format(halfEdge.index))
