@@ -7,6 +7,9 @@ import draw_routines
 import logging
 import voronoi
 import utils
+import IPython
+import pickle
+from os.path import isfile
 
 #constants:
 #Size of the screen:
@@ -15,6 +18,7 @@ X = pow(2,N)
 Y = pow(2,N)
 imgPath = "./imgs/"
 imgName = "initialTest"
+DCEL_PICKLE = "dcel.pkl"
 currentTime = time.gmtime()
 FONT_SIZE = 0.03
 VORONOI_SIZE = 20
@@ -43,25 +47,51 @@ ctx = cairo.Context(surface)
 ctx.scale(X,Y)
 ctx.set_font_size(FONT_SIZE)
 
-#Setup the voronoi diagram:
-voronoiInstance = voronoi.Voronoi(ctx,(X,Y),num_of_nodes=VORONOI_SIZE)
-voronoiInstance.initGraph()
-voronoiInstance.calculate_to_completion()
+#--------------------------------------------------------------------------------
 
-#repeatedly relax and rerun
-for i in range(RELAXATION_AMNT):
-    logging.debug("Relaxing iteration: {}".format(i))
+def generate_voronoi():
+    """ Generate and relax a voronoi diagram, then pickle the resulting DCEL  """
+    
+    #Setup the voronoi diagram:
+    logging.info("Creating Initial Voronoi Diagram")
+    voronoiInstance = voronoi.Voronoi(ctx,(X,Y),num_of_nodes=VORONOI_SIZE)
+    voronoiInstance.initGraph()
+    voronoiInstance.calculate_to_completion()
+
+    #repeatedly relax and rerun
+    for i in range(RELAXATION_AMNT):
+        logging.info("Relaxing iteration: {}".format(i))
+        dcel = voronoiInstance.finalise_DCEL()
+        utils.clear_canvas(ctx)
+        utils.drawDCEL(ctx,dcel)
+        utils.write_to_png(surface,"{}__relaxed_{}".format(saveString,i))
+        voronoiInstance.relax()
+        
+    logging.info("Finalised Voronoi diagram, proceeding")
     dcel = voronoiInstance.finalise_DCEL()
-    utils.clear_canvas(ctx)
-    utils.drawDCEL(ctx,dcel)
-    utils.write_to_png(surface,"{}__relaxed_{}".format(saveString,i))
-    voronoiInstance.relax()
+    with open(DCEL_PICKLE,'wb') as f:
+        pickle.dump(dcel,f)
+
+#--------------------------------------------------------------------------------
 
 
-dcel = voronoiInstance.finalise_DCEL()
+
+
+if not isfile(DCEL_PICKLE):
+    generate_voronoi()
+
+logging.info("Opening DCEL pickle")    
+with open(DCEL_PICKLE,'rb') as f:
+    dcel = pickle.load(f)
+    
 #Manipulate DCEL to create map
 
+
 #Draw
+logging.info("Drawing final diagram")
 utils.clear_canvas(ctx)
 utils.drawDCEL(ctx,dcel)
-utils.write_to_png(surface,saveString)
+utils.write_to_png(surface,"{}__FINAL".format(saveString))
+
+
+
