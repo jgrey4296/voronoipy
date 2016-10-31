@@ -116,9 +116,9 @@ class BeachLine(object):
         if self.arc:
             triple = [node.get_predecessor(),node,node.get_successor()]
             tripleString = "-".join([str(x) for x in triple if x])
-            logging.info("Deleting Arc: {}".format(tripleString))
+            logging.debug("Deleting Arc: {}".format(tripleString))
         else:
-            logging.info("Deleting Value: {}".format(node.value))
+            logging.debug("Deleting Value: {}".format(node.value))
         rbTreeDelete_textbook(self,node)
         if node in self.nodes:
             self.nodes.remove(node)
@@ -307,7 +307,11 @@ class Node(object):
 
     def __str__(self):
         if self.arc:
-            return ascii_uppercase[self.value.id]
+            try:
+                value = ascii_uppercase[self.value.id]
+            except IndexError as e:
+                value = str(self.value)
+            return value
         else:
             return str(self.value)
 
@@ -340,7 +344,7 @@ class Node(object):
         #pred and successor are the same arc
         if pred != NilNode and succ != NilNode and pred.value == succ.value:
             intersect = pred.value.intersect(self.value)
-            logging.warning("Predecessor and Successor are the same: {}".format(pred))
+            logging.debug("Predecessor and Successor are the same: {}".format(pred))
             logging.debug("Intersection result: {}".format(intersect))
             if len(intersect) != 2:
                 raise Exception("Two parabolas arent intersecting correctly")
@@ -745,7 +749,7 @@ def rbTreeDelete_textbook(tree,z):
         rbDeleteFixup_textbook(tree,x)
     #collapse when two nodes are the same
     if orig_pred != NilNode and orig_succ != NilNode and orig_pred.value == orig_succ.value:
-        logging.info("Collapsing with successor {}".format(orig_succ))
+        logging.debug("Collapsing with successor {}".format(orig_succ))
         tree.delete(orig_succ)
     logging.debug("Finished deletion")
     
