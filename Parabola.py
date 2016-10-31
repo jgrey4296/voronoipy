@@ -1,4 +1,5 @@
 import numpy as np
+import logging
 import IPython
 
 from Quadratic import Quadratic as Q
