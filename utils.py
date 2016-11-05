@@ -22,6 +22,8 @@ FACE = [0,0,1,1]
 START = [0,1,0,1]
 END = [1,0,0,1]
 
+SMALL_RADIUS = 0.003
+
 ALPHA = 0.1
 BACKGROUND = [0,0,0,1]
 FRONT = [0.8,0.1,0.71,ALPHA]
@@ -59,15 +61,16 @@ def drawCircle(ctx,x,y,r,fill=True):
         ctx.stroke()
 
 def drawDCEL(ctx,dcel):
+    """ A top level function to draw a dcel  """
     ctx.set_source_rgba(0.2,0.2,0.9,1)
     #draw the faces
     draw_dcel_faces(ctx,dcel)
     ctx.set_source_rgba(0.4,0.8,0.1,1)
     #draw edges
-    draw_dcel_edges(ctx,dcel)
+    #draw_dcel_edges(ctx,dcel)
     ctx.set_source_rgba(0.9,0.1,0.1,1)
     #draw vertices
-    draw_dcel_vertices(ctx,dcel)
+    #draw_dcel_vertices(ctx,dcel)
     
 def draw_dcel_faces(ctx,dcel):
     for f in dcel.faces:
@@ -86,7 +89,8 @@ def draw_dcel_single_face(ctx,dcel,face,clear=True,force_centre=False):
     ctx.set_line_width(0.004)
     faceCentre = face.getCentroid()
     drawText(ctx,*faceCentre,str("F: {}".format(face.index)))
-    startRadius = 0.009
+    ctx.set_source_rgba(*END)
+    drawCircle(ctx,*faceCentre,SMALL_RADIUS)
     #Draw face edges:
     for x in face.getEdges():
         ctx.set_source_rgba(*FACE)            
@@ -96,14 +100,12 @@ def draw_dcel_single_face(ctx,dcel,face,clear=True,force_centre=False):
             logging.debug("Drawing Face edge from ({},{}) to ({},{})".format(v1.x,v1.y,
                                                                   v2.x,v2.y))
             ctx.move_to(v1.x,v1.y)
+            ctx.set_source_rgba(*np.random.random(3),1)
             ctx.line_to(v2.x,v2.y)
             ctx.stroke()
             #additional things to draw:
             ctx.set_source_rgba(*START)
-            drawCircle(ctx,v1.x-0.005,v1.y,startRadius)
-            ctx.set_source_rgba(*END)
-            drawCircle(ctx,v2.x+0.005,v2.y,startRadius)
-            startRadius = 0.005
+            drawCircle(ctx,v1.x,v1.y,SMALL_RADIUS)
     if force_centre:
         ctx.translate(-0.5,-0.5)
         ctx.translate(*centre)
@@ -118,7 +120,6 @@ def draw_dcel_edges(ctx,dcel):
         #only draw if the end hasnt been drawn yet:
         if i in drawnEdges:
             continue
-        
         ctx.set_source_rgba(*EDGE)
         v1,v2 = e.getVertices()
         if v1 is not None and v2 is not None:
