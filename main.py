@@ -3,13 +3,13 @@ import sys
 import time
 import math
 import cairo
-import draw_routines
 import logging
 import voronoi
 import utils
 import IPython
 import pickle
 from os.path import isfile
+import dcel
 
 #constants:
 #Size of the screen:
@@ -21,8 +21,8 @@ imgName = "initialTest"
 DCEL_PICKLE = "dcel.pkl"
 currentTime = time.gmtime()
 FONT_SIZE = 0.03
-VORONOI_SIZE = 20
-RELAXATION_AMNT = 10
+VORONOI_SIZE = 100
+RELAXATION_AMNT = 3
 #format the name of the image to be saved thusly:
 saveString = "%s%s_%s-%s-%s_%s-%s" % (imgPath,
                                           imgName,
@@ -60,7 +60,7 @@ def generate_voronoi():
 
     #repeatedly relax and rerun
     for i in range(RELAXATION_AMNT):
-        logging.info("Relaxing iteration: {}".format(i))
+        logging.info("-------------------- Relaxing iteration: {}".format(i))
         dcel = voronoiInstance.finalise_DCEL()
         utils.clear_canvas(ctx)
         utils.drawDCEL(ctx,dcel)
@@ -68,30 +68,31 @@ def generate_voronoi():
         voronoiInstance.relax()
         
     logging.info("Finalised Voronoi diagram, proceeding")
-    dcel = voronoiInstance.finalise_DCEL()
+    the_dcel = voronoiInstance.finalise_DCEL()
     with open(DCEL_PICKLE,'wb') as f:
-        pickle.dump(dcel,f)
+        try:
+            pickle.dump(the_dcel.export_data(),f)
+        except RecursionError as e:
+            logging.info("Recursion error")
+            IPython.embed()
 
 #--------------------------------------------------------------------------------
-
-
-
-
 if not isfile(DCEL_PICKLE):
     generate_voronoi()
 
-logging.info("Opening DCEL pickle")    
+logging.info("Opening DCEL pickle")
+the_dcel = dcel.DCEL()
 with open(DCEL_PICKLE,'rb') as f:
-    dcel = pickle.load(f)
-    
+    dcel_data = pickle.load(f)
+the_dcel.import_data(dcel_data)
+
 #Manipulate DCEL to create map
 
 
 #Draw
 logging.info("Drawing final diagram")
 utils.clear_canvas(ctx)
-utils.drawDCEL(ctx,dcel)
+utils.drawDCEL(ctx,the_dcel)
 utils.write_to_png(surface,"{}__FINAL".format(saveString))
 
-
-
+IPython.embed()
