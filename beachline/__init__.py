@@ -310,7 +310,7 @@ class Node(object):
             try:
                 value = ascii_uppercase[self.value.id]
             except IndexError as e:
-                value = str(self.value)
+                value = "IE:{}".format(str(self.value))
             return value
         else:
             return str(self.value)
@@ -358,15 +358,25 @@ class Node(object):
             if pred != NilNode:
                 pred_intersect = self.value.intersect(pred.value)
                 logging.debug("Pred intersect result: {}".format(pred_intersect))
-                if len(pred_intersect) > 0:
-                    the_range[0] = pred_intersect[1,0]
+                if len(pred_intersect.shape) == 2:
+                    if pred_intersect.shape[0] == 1:
+                        the_range[0] = pred_intersect[0,0]
+                    else:
+                        the_range[0] = pred_intersect[1,0]
+                else:
+                    the_range[0] = pred_intersect[0]
                     
             
             if succ != NilNode:
                 succ_intersect = succ.value.intersect(self.value)
                 logging.debug("Succ intersect result: {}".format(succ_intersect))
-                if len(succ_intersect) > 0:
-                    the_range[1] = succ_intersect[1,0]
+                if len(succ_intersect.shape) == 2:
+                    if succ_intersect.shape[0] == 1:
+                        the_range[1] = succ_intersect[0,0]
+                    else:
+                        the_range[1] = succ_intersect[1,0]
+                else:
+                    the_range[0] = succ_intersect[0]
 
         logging.debug("Testing: {} < {} < {}".format(the_range[0],x,the_range[1]))
         if the_range[0] < x and x <= the_range[1]:
