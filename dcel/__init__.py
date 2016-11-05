@@ -6,6 +6,7 @@ import utils
 import numpy as np
 import pyqtree
 import sys
+from collections import namedtuple
 
 EPSILON = sys.float_info.epsilon
 CENTRE = np.array([[0.5,0.5]])
@@ -13,6 +14,8 @@ PI = math.pi
 TWOPI = 2 * PI
 HALFPI = PI * 0.5
 
+#for importing data into the dcel:
+DataPair = namedtuple('DataPair','key obj data')
 
 
 # An implementation of a Double-Edge Connected List
@@ -24,21 +27,36 @@ class Vertex:
 
     nextIndex = 0
     
-    def __init__(self,x,y,iEdge=None):
-        logging.debug("Creating vertex at: {0:.3f} {1:.3f}".format(x,y))
+    def __init__(self,x,y,iEdge=None,index=None):
         self.x = x
         self.y = y
         self.incidentEdge = iEdge
         self.halfEdges = []
         self.active = True
-        self.index = Vertex.nextIndex
-        Vertex.nextIndex += 1
+        if index is None:
+            logging.debug("Creating vertex {} at: {:.3f} {:.3f}".format(Vertex.nextIndex,x,y))
+            self.index = Vertex.nextIndex
+            Vertex.nextIndex += 1
+        else:
+            logging.debug("Re-Creating Vertex: {}".format(index))
+            self.index = index
+            if self.index >= Vertex.nextIndex:
+                Vertex.nextIndex = self.index + 1
 
+    def _export(self):
+        logging.debug("Exporting Vertex: {}".format(self.index))
+        return {
+            'i': self.index,
+            'x': self.x,
+            'y': self.y,
+            'halfEdges' : [x.index for x in self.halfEdges]            
+            #include 'active' ?            
+        }
+    
     def eq(self,v2):
         a = self.x - v2.x
         b = self.y - v2.y
         return a <= EPSILON and b <= EPSILON
-        
         
     def __str__(self):
         return "({},{})".format(self.x,self.y)
@@ -57,10 +75,12 @@ class Vertex:
         
     def registerHalfEdge(self,he):
         self.halfEdges.append(he)
+        logging.debug("Registered v{} to e{}".format(self.index,he.index))
         
     def unregisterHalfEdge(self,he):
         if he in self.halfEdges:
             self.halfEdges.remove(he)
+        logging.debug("Remaining edges: {}".format(len(self.halfEdges)))
             
             
     def within(self,bbox):
@@ -152,24 +172,60 @@ class HalfEdge:
     """ A Canonical Half-Edge. Has an origin point, and a twin half-edge for its end point,
         Auto-maintains counter-clockwise vertex order with it's twin
     """
-    currentIndex = 0
+    nextIndex = 0
     
-    def __init__(self, origin, twin=None):
+    def __init__(self, origin=None, twin=None,index=None):
         self.origin = origin
-        if origin:
-            self.origin.registerHalfEdge(self)
         self.twin = twin
         self.face = None
         self.next = None
         self.prev = None
-        self.index = HalfEdge.currentIndex
-        HalfEdge.currentIndex += 1
+        if index is None:
+            logging.debug("Creating Edge {}".format(HalfEdge.nextIndex))
+            self.index = HalfEdge.nextIndex
+            HalfEdge.nextIndex += 1
+        else:
+            logging.debug("Re-creating Edge: {}".format(index))
+            self.index = index
+            if self.index >= HalfEdge.nextIndex:
+                HalfEdge.nextIndex = self.index + 1
+        #register the halfedge with the vertex
+        if origin:
+            self.origin.registerHalfEdge(self)
 
         #Additional:
         self.markedForCleanup = False
         self.constrained = False
         self.drawn = False
         self.fixed = False
+
+
+    def _export(self):
+        logging.debug("Exporting Edge: {}".format(self.index))
+        origin = self.origin
+        if origin is not None:
+            origin = origin.index
+        twin = self.twin
+        if twin is not None:
+            twin = twin.index
+        face = self.face
+        if face is not None:
+            face = face.index
+        next = self.next
+        if next is not None:
+            next = next.index
+        prev = self.prev
+        if prev is not None:
+            prev = prev.index
+        
+        return {
+            'i' : self.index,
+            'origin' : origin,
+            'twin' : twin,
+            'face' : face,
+            'next' : next,
+            'prev' : prev
+        }
         
     def __str__(self):
         return "HalfEdge: {} - {}".format(self.origin,self.twin.origin)
@@ -348,9 +404,11 @@ class HalfEdge:
         self.origin = None
         self.twin.origin = None
         if v1:
+            logging.debug("Clearing vertex {} from edge {}".format(v1.index,self.index))
             v1.unregisterHalfEdge(self)
         if v2:
-            v2.unregisterHalfEdge(self.twin)
+             logging.debug("Clearing vertex {} from edge {}".format(v2.index,self.twin.index))
+             v2.unregisterHalfEdge(self.twin)
             
     def swapFaces(self):
         if not self.face and self.twin.face:
@@ -366,6 +424,12 @@ class HalfEdge:
     def setPrev(self,prevEdge):
         self.prev = prevEdge
         self.prev.next = self
+
+    def connectNextToPrev(self):
+        if self.prev:
+            self.prev.next = self.next
+        if self.next:
+            self.next.prev = self.prev
         
     def getVertices(self):
         return (self.origin,self.twin.origin)
@@ -377,20 +441,37 @@ class HalfEdge:
 class Face(object):
     """ A Face with a start point for its outer component list, and all of its inner components """
 
-    currentIndex = 0
+    nextIndex = 0
     
-    def __init__(self):
+    def __init__(self,index=None):
         #Starting point for bounding edges, going anti-clockwise
         self.outerComponent = None
         #Clockwise inner loops
         self.innerComponents = []
         self.edgeList = []
-        self.index = Face.currentIndex
-        Face.currentIndex += 1
         #mark face for cleanup:
         self.markedForCleanup = False
+        #Additional Date:
+        self.data = None
+        if index is None:
+            logging.debug("Creating Face {}".format(Face.nextIndex))
+            self.index = Face.nextIndex
+            Face.nextIndex += 1
+        else:
+            logging.debug("Re-creating Face: {}".format(index))
+            self.index = index
+            if self.index >= Face.nextIndex:
+                Face.nextIndex = self.index + 1
+            
 
-        
+    def _export(self):
+        logging.debug("Exporting face: {}".format(self.index))
+        return {
+            'i' : self.index,
+            'edges' : [x.index for x in self.edgeList if x is not None],
+            
+        }
+                
     def removeEdge(self,edge):
         self.innerComponents.remove(edge)
         self.edgeList.remove(edge)
@@ -456,8 +537,93 @@ class DCEL(object):
         self.vertices  = []
         self.faces     = []
         self.halfEdges = []
-        self.vertex_quad_tree = pyqtree.Index(bbox=bbox)
         self.bbox = bbox
+        self.vertex_quad_tree = pyqtree.Index(bbox=self.bbox)
+
+    def export_data(self):
+        """ Export a simple format to define vertices, halfedges, faces  """
+        data = {
+            'vertices' : [x._export() for x in self.vertices],
+            'halfEdges' : [x._export() for x in self.halfEdges],
+            'faces' : [x._export() for x in self.faces],
+            'bbox' : self.bbox
+        }
+        return data
+        
+
+    def import_data(self,data):
+        """ Import the data format of symbolic links to actual links, of export output from a dcel """
+        if 'vertices' not in data or 'halfEdges' not in data or 'faces' not in data or 'bbox' not in data:
+            raise Exception("Invalid Import Data Call")
+        self.bbox = data['bbox']
+        #dictionarys:
+        local_vertices = {}
+        local_edges = {}
+        local_faces = {}
+        
+        #construct vertices by index
+        for vData in data['vertices']:
+            logging.info("Re-Creating Vertex: {}".format(vData['i']))
+            newVertex = Vertex(vData['x'],vData['y'],index=vData['i'])
+            logging.debug("Re-created vertex: {}".format(newVertex.index))
+            local_vertices[newVertex.index] = DataPair(newVertex.index,newVertex,vData)
+        #edges by index
+        for eData in data['halfEdges']:
+            logging.info("Re-Creating Edge: {}".format(eData['i']))
+            newEdge = HalfEdge(index=eData['i'])
+            logging.debug("Re-created Edge: {}".format(newEdge.index))
+            local_edges[newEdge.index] = DataPair(newEdge.index,newEdge,eData)
+        #faces by index
+        for fData in data['faces']:
+            logging.info("Re-Creating Face: {}".format(fData['i']))
+            newFace = Face(index=fData['i'])
+            logging.debug("Re-created face: {}".format(newFace.index))
+            local_faces[newFace.index] = DataPair(newFace.index,newFace,fData)
+        #Everything now exists, so:
+        #connect the objects up, instead of just using ids
+        try:
+            for vertex in local_vertices.values():
+                vertex.obj.halfEdges = [local_edges[x].obj for x in vertex.data['halfEdges']]
+        except Exception as e:
+            logging.info("Error for vertex")
+            IPython.embed()
+        try:
+            for edge in local_edges.values():
+                if edge.data['origin'] is not None: 
+                    edge.obj.origin = local_vertices[edge.data['origin']].obj
+                if edge.data['twin'] is not None:
+                    edge.obj.twin = local_edges[edge.data['twin']].obj
+                if edge.data['next'] is not None:
+                    edge.obj.next = local_edges[edge.data['next']].obj
+                if edge.data['prev'] is not None:
+                    edge.obj.prev = local_edges[edge.data['prev']].obj
+                if edge.data['face'] is not None:
+                    edge.obj.face = local_faces[edge.data['face']].obj
+        except Exception as e:
+            logging.info("Error for edge")
+            IPython.embed()
+        try:
+            for face in local_faces.values():
+                face.obj.edgeList = [local_edges[x].obj for x in face.data['edges']]
+        except Exception as e:
+            logging.info("Error for face")
+            IPython.embed()
+        #Now transfer into the actual object:
+        self.vertices = [x.obj for x in local_vertices.values()]
+        self.halfEdges = [x.obj for x in local_edges.values()]
+        self.faces = [x.obj for x in local_faces.values()]
+        self.calculate_quad_tree()
+            
+
+            
+            
+    def clear_quad_tree(self):
+        self.vertex_quad_tree = None
+
+    def calculate_quad_tree(self):
+        self.vertex_quad_tree = pyqtree.Index(bbox=self.bbox)
+        for vertex in self.vertices:
+            self.vertex_quad_tree.insert(item=vertex,bbox=vertex.bbox())
         
     def __str__(self):
         verticesDescription = "Vertices: num: {}".format(len(self.vertices))
@@ -525,6 +691,8 @@ class DCEL(object):
             e2.prev = prev2
             prev2.next = e2
         self.halfEdges.extend([e1,e2])
+        logging.debug("Created Edge Pair: {}".format(e1.index))
+        logging.debug("Created Edge Pair: {}".format(e2.index))
         return e1
         
     def newFace(self):
@@ -570,13 +738,16 @@ class DCEL(object):
         numEdges = len(self.halfEdges)
         for e in self.halfEdges:
             logging.debug("\n---- Checking constraint for: {}/{} {}".format(e.index,numEdges,e))
+            if e.markedForCleanup:
+                continue
             #if both vertices are within the bounding box, don't touch
             if e.isConstrained():
                 continue
             if e.within(bbox):
                 continue
             #if both vertices are out of the bounding box, clean away entirely
-            elif e.outside(bbox):
+            if e.outside(bbox):
+                logging.debug("marking for cleanup: e{}".format(e.index))
                 e.markedForCleanup = True
                 continue
             else:
@@ -608,18 +779,21 @@ class DCEL(object):
         logging.debug("Purging infinite edges")
         edges_to_purge = [x for x in self.halfEdges if x.isInfinite()]
         for e in edges_to_purge:
+            logging.debug("Purging infinite: e{}".format(e.index))
             e.clearVertices()
             self.halfEdges.remove(e)
             e.face.removeEdge(e)
-        
+            e.connectNextToPrev()
         
     def purge_edges(self):
         logging.debug("Purging edges marked for cleanup")
         edges_to_purge = [x for x in self.halfEdges if x.markedForCleanup]
         for e in edges_to_purge:
+            logging.debug("Purging: e{}".format(e.index))
             e.clearVertices()
             self.halfEdges.remove(e)
             e.face.removeEdge(e)
+            e.connectNextToPrev()
 
         
     def purge_vertices(self):
@@ -650,7 +824,9 @@ class DCEL(object):
                 current_edge = edgeList.pop()
                 nextEdge = edgeList[-1]
                 logging.debug("---- Edge Pair: {} - {}".format(current_edge.index,nextEdge.index))
-                if not current_edge.connections_align(nextEdge):
+                if current_edge.connections_align(nextEdge):
+                    current_edge.setNext(nextEdge)
+                else:
                     logging.debug("Edges do not align:\n\t e1: {} \n\t e2: {}".format(current_edge.twin.origin,nextEdge.origin))
                     #if they intersect with different bounding walls, they need a corner
                     intersect_1 = current_edge.intersects_edge(bbox)
@@ -662,8 +838,8 @@ class DCEL(object):
                         logging.debug("Intersects match, creating a simple edge between: {}={}".format(current_edge.index,nextEdge.index))
                         #connect together with simple edge
                         newEdge = self.newEdge(current_edge.twin.origin,nextEdge.origin,face=f,prev=current_edge)
-                        newEdge.next = nextEdge
-                        nextEdge.prev = newEdge
+                        current_edge.setNext(newEdge)
+                        newEdge.setNext(nextEdge)
                     else:
                         logging.debug("Creating a corner edge connection between: {}={}".format(current_edge.index,nextEdge.index))
                         #connect via a corner
@@ -671,16 +847,18 @@ class DCEL(object):
                         logging.debug("Corner Edge: {}".format(newVertex))
                         newEdge_1 = self.newEdge(current_edge.twin.origin,newVertex,face=f,prev=current_edge)
                         newEdge_2 = self.newEdge(newVertex,nextEdge.origin,face=f,prev=newEdge_1)
-                        newEdge_1.next = newEdge_2
-                        newEdge_2.prev = newEdge_1
-                        newEdge_2.next = nextEdge
-                        nextEdge.prev = newEdge_2
+                        
+                        current_edge.setNext(newEdge_1)
+                        newEdge_1.setNext(newEdge_2)
+                        newEdge_2.setNext(nextEdge)
                 
             #at this point, only the last hasn't been processed
             #as above, but:
             logging.debug("Checking final edge pair")
             current_edge = edgeList.pop()
-            if not current_edge.connections_align(first_edge):
+            if current_edge.connections_align(first_edge):
+                current_edge.setNext(first_edge)
+            else:
                 intersect_1 = current_edge.intersects_edge(bbox)
                 intersect_2 = first_edge.intersects_edge(bbox)
                 if intersect_1 is None or intersect_2 is None:
@@ -689,8 +867,8 @@ class DCEL(object):
                     logging.debug("Intersects match, creating final simple edge")
                     #connect with simple edge
                     newEdge = self.newEdge(current_edge.twin.origin,first_edge.origin,face=f,prev=current_edge)
-                    newEdge.next = nextEdge
-                    first_edge.prev = newEdge
+                    current_edge.setNext(newEdge)
+                    newEdge.setNext(first_edge)
                 else:
                     logging.debug("Creating final corner edge connection between: {}={}".format(current_edge.index,first_edge.index))
                     #connect via a corner
@@ -699,10 +877,9 @@ class DCEL(object):
                     newEdge_2 = self.newEdge(newVertex,first_edge.origin,face=current_edge.face,prev=newEdge_1)
                     #newEdge_1 = self.newEdge(current_edge.twin.origin,newVertex,face=current_edge.face,prev=current_edge)
                     #newEdge_2 = self.newEdge(newVertex,nextEdge.origin,face=current_edge.face,prev=newEdge_1)
-                    newEdge_1.next = newEdge_2
-                    newEdge_2.prev = newEdge_1
-                    newEdge_2.next = first_edge
-                    first_edge.prev = newEdge_2
+                    current_edge.setNext(newEdge_1)
+                    newEdge_1.setNext(newEdge_2)
+                    newEdge_2.setNext(first_edge)
 
             logging.debug("Final sort of face: {}".format(f.index))
             f.sort_edges()
