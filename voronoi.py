@@ -12,7 +12,7 @@ import pickle
 from string import ascii_uppercase
 import sys
 from Parabola import Parabola
-from beachline import BeachLine,Left,Right,Centre,NilNode
+from beachline import BeachLine,Left,Right,Centre,NilNode,Node
 from dcel import DCEL
 from os.path import isfile
 import logging
@@ -70,6 +70,10 @@ class Voronoi(object):
         """ Create a graph of initial random sites """
         logging.debug("Initialising graph")
         self.dcel = DCEL(bbox=BBOX) #init the dcel
+        self.events = []
+        self.sites = []
+        self.circles = []
+        self.halfEdges = {}
         values = data
         if values is None and not rerun:
             values = self.load_graph()
@@ -205,6 +209,9 @@ class Voronoi(object):
         else:
             new_node = self.beachline.insert_predecessor(closest_arc_node,new_arc)
             duplicate_node = self.beachline.insert_predecessor(new_node,closest_arc_node.value)
+
+        if not isinstance(new_node,Node):
+            raise Exception("Bad Creation of Beach line node")
             
         newTriple = [closest_arc_node.value.id,new_node.value.id,duplicate_node.value.id]
         tripleString = "-".join([ascii_uppercase[x] if x < 26 else str(x) for x in newTriple])
@@ -388,6 +395,7 @@ class Voronoi(object):
                     utils.write_to_png(surface,saveName)
             else:
                 raise Exception("No intersections detected when completing an infinite edge")
+            logging.debug('----')
 
     def _complete_faces(self,dcel=None):
         if dcel is None:
