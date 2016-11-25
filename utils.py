@@ -12,7 +12,7 @@ import logging
 import sys
 import random
 
-DRAW_TEXT = False
+DRAW_TEXT = True
 
 #constants:
 TEXT = [0,1,1,1]
@@ -283,13 +283,20 @@ def line_segment_intersection(p,pr,q,qs):
         return None
 
 
-def get_distance(p1,p2):
+
+def get_distance_raw(p1,p2):
     p1 = p1.reshape(-1,2)
     p2 = p2.reshape(-1,2)
     dSquared = pow(p2-p1,2)
     summed = dSquared[:,0] + dSquared[:,1]
+    return summed
+    
+def get_distance(p1,p2):
+    summed = get_distance_raw(p1,p2)
     sqrtd = np.sqrt(summed)
     return sqrtd
+
+
 
 
 def get_normal(p1,p2):

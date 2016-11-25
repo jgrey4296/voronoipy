@@ -1,6 +1,7 @@
 import IPython
 import math
-from math import atan2,sqrt
+from math import atan2,sqrt,atan,pi
+from random import random
 import logging
 import utils
 import numpy as np
@@ -13,6 +14,7 @@ CENTRE = np.array([[0.5,0.5]])
 PI = math.pi
 TWOPI = 2 * PI
 HALFPI = PI * 0.5
+QPI = PI * 0.5
 
 #for importing data into the dcel:
 DataPair = namedtuple('DataPair','key obj data')
@@ -59,7 +61,7 @@ class Vertex:
         return a <= EPSILON and b <= EPSILON
         
     def __str__(self):
-        return "({},{})".format(self.x,self.y)
+        return "({:.3f},{:.3f})".format(self.x,self.y)
         
     def isEdgeless(self):
         return len(self.halfEdges) == 0
@@ -230,6 +232,7 @@ class HalfEdge:
     def __str__(self):
         return "HalfEdge: {} - {}".format(self.origin,self.twin.origin)
 
+
     def __lt__(self,other):
         """
             Comparison of the origin and other.origin, from ciamej's stack overflow answer
@@ -274,7 +277,7 @@ class HalfEdge:
                 logging.debug("Comparing by distance to face centre")
                 d1 = utils.get_distance(o_a,centre)
                 d2 = utils.get_distance(o_b,centre)
-                logging.debug("D1: {} \n D2: {}".format(d1,d2))
+                logging.debug("D1: {} -- D2: {}".format(d1,d2))
                 retValue = (d1 < d2)[0]
 
         logging.debug("CW: {}".format(retValue))
@@ -518,6 +521,8 @@ class Face(object):
         return self.edgeList
         
     def add_edge(self,edge):
+        if edge.face is None:
+            edge.face = self
         self.innerComponents.append(edge)
         self.edgeList.append(edge)
 

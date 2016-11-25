@@ -9,6 +9,7 @@ import utils
 import IPython
 import pickle
 from os.path import isfile
+import random
 import dcel
 
 #constants:
