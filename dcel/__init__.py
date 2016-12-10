@@ -1,6 +1,6 @@
 import IPython
 import math
-from math import atan2,sqrt,atan,pi
+from math import atan2,sqrt,atan,pi,copysign
 from random import random
 import logging
 import utils
