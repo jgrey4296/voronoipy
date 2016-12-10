@@ -234,6 +234,24 @@ class HalfEdge:
 
 
     def __lt__(self,other):
+        centre = self.face.getCentroid()
+        a = self.origin.toArray()
+        b = other.origin.toArray()
+        o_a = a - centre
+        o_b = b - centre
+        a1 = atan2(o_a[1],o_a[0])
+        a2 = atan2(o_b[1],o_b[0])
+        logging.debug("lt: ({} , {}):  {} < {} (o: {} , {})".format(a,b,a1,a2,o_a,o_b))
+        s1 = copysign(1,a1)
+        s2 = copysign(1,a2)
+        if s1 == s2: #same hemispheres
+            return a1 > a2
+        else: #different hemispheres
+            if s1 > 0 and s2 < 0:
+                return False
+            else:
+                return True        
+    
         """
             Comparison of the origin and other.origin, from ciamej's stack overflow answer
             sorts clockwise relative to the centre of the face
