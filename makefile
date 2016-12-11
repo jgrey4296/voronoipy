@@ -3,5 +3,5 @@ all:
 	python main.py
 
 clean:
-	rm *.pkl
+	-rm *.pkl
 	python main.py
