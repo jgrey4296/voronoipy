@@ -586,7 +586,8 @@ class Face(object):
 
     nextIndex = 0
     
-    def __init__(self,index=None):
+    def __init__(self,site_x,site_y,index=None):
+        self.site = np.array([site_x,site_y])
         #Starting point for bounding edges, going anti-clockwise
         self.outerComponent = None
         #Clockwise inner loops
@@ -632,6 +633,9 @@ class Face(object):
         return bbox
 
     def getCentroid(self):
+        return self.site
+    
+    def ___getCentroid(self):
         bbox = self.get_bbox()
         #max - min /2
         norm = bbox[1,:] + bbox[0,:]
