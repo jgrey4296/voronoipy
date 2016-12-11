@@ -234,6 +234,23 @@ class HalfEdge:
 
 
     def __lt__(self,other):
+        centre = self.face.getCentroid()
+        a = self.origin.toArray()
+        b = other.origin.toArray()
+        logging.debug("Lt: {}, {}, {}".format(centre,a,b))
+        centre *= [1,-1]
+        a *= [1,-1]
+        b *= [1,-1]
+        centre += [0,1]
+        a += [0,1]
+        b += [0,1]
+
+        c = centre
+        atob = b - a
+        btoc = c - b
+        cross = np.cross(atob,btoc)
+        return cross <= 0.0
+
         """
         atan2 based CCW sorting. if self < other, self is CCW of other relative to
         the centroid of their face
