@@ -232,6 +232,17 @@ class HalfEdge:
     def __str__(self):
         return "HalfEdge: {} - {}".format(self.origin,self.twin.origin)
 
+    def atan(self):
+        centre = self.face.getCentroid()
+        a = self.origin.toArray()
+        centre *= [1,-1]
+        a *= [1,-1]
+        centre += [0,1]
+        a += [0,1]
+        o_a = a - centre
+        a1 = atan2(o_a[1],o_a[0])
+        return a1
+        
 
     def __lt__(self,other):
         centre = self.face.getCentroid()
@@ -512,7 +523,7 @@ class HalfEdge:
             logging.debug("Cmp Pair: {} - {}".format(selfcmp,othercmp))
             if selfcmp != othercmp:
                 logging.debug("Mismatched Indices: {}-{}".format(self.index,self.twin.index))
-                logging.debug("Mismatched: {} - {}".format(self,self.twin))
+                logging.debug("Mismatched: {} - {}, ({} | {})".format(self,self.twin,self.face.getCentroid(),self.twin.face.getCentroid()))
                 IPython.embed()
                 raise Exception("Mismatched orientations")
             logging.debug("CMP: {}".format(selfcmp))
@@ -616,6 +627,8 @@ class Face(object):
         return {
             'i' : self.index,
             'edges' : [x.index for x in self.edgeList if x is not None],
+            'sitex' : self.site[0],
+            'sitey' : self.site[1],
         }
                 
     def removeEdge(self,edge):
@@ -634,10 +647,10 @@ class Face(object):
         #logging.debug("Bbox found  : {}".format(bbox))
         return bbox
 
-    def getCentroid(self):
-        return self.site
+    def __getCentroid(self):
+        return self.site.copy()
     
-    def ___getCentroid(self):
+    def getCentroid(self):
         bbox = self.get_bbox()
         #max - min /2
         norm = bbox[1,:] + bbox[0,:]
@@ -675,7 +688,11 @@ class Face(object):
     def sort_edges(self):
         """ Order the edges anti-clockwise, by starting point """
         logging.debug("Sorting edges")
-        self.edgeList = sorted(self.edgeList)
+        atanEdges = [(x.atan(),x) for x in self.edgeList]
+        atanEdges = sorted(atanEdges)
+        atanEdges.reverse()
+        self.edgeList = [e for (a,e) in atanEdges]
+        #self.edgeList = sorted(self.edgeList)
         #self.edgeList.reverse()
         logging.debug("Sorted edges: {}".format([str(x.index) for x in self.edgeList])) 
         
@@ -727,7 +744,7 @@ class DCEL(object):
         #faces by index
         for fData in data['faces']:
             logging.info("Re-Creating Face: {}".format(fData['i']))
-            newFace = Face(index=fData['i'])
+            newFace = Face(fData['sitex'],fData['sitey'],index=fData['i'])
             logging.debug("Re-created face: {}".format(newFace.index))
             local_faces[newFace.index] = DataPair(newFace.index,newFace,fData)
         #Everything now exists, so:
