@@ -303,6 +303,41 @@ class HalfEdge:
                 logging.debug("Lt true")
                 return True        
     
+    def dep2__lt__(self,other):
+        #passes all but two tests, but fails on real voronoi 
+        centre = self.face.getCentroid()
+        a = self.origin.toArray()
+        b = other.origin.toArray()
+        centre *= [1,-1]
+        a *= [1,-1]
+        b *= [1,-1]
+        centre += [0,1]
+        a += [0,1]
+        b += [0,1]        
+        o_a = a - centre
+        o_b = b - centre
+        retValue = False
+        if o_a[0] >= 0 and o_b[0] < 0 and o_a[1] < 0:
+            retValue = True
+        elif o_a[0]*o_a[0] < 0.001 and o_b[0]*o_b[0] < 0.001:
+            if o_a[1] >= 0 or o_b[1] >= 0:
+                retValue = a[1] > b[1]
+            else:
+                retValue = b[1] > a[1]
+        else:
+            det = o_a[0]*o_b[1] - o_b[0]*o_a[1]
+            if det < 0:
+                retValue = True
+            elif det > 0:
+                retValue = False
+            else:
+                d1 = o_a[0]*o_a[0] + o_a[1]*o_a[1]
+                d2 = o_b[0]*o_b[0] + o_b[1]*o_b[1]
+                retValue =  d1 < d2
+
+        return not retValue
+    
+    def dep3__lt__(self,other,ip=False):
         """
             Comparison of the origin and other.origin, from ciamej's stack overflow answer
             sorts clockwise relative to the centre of the face
