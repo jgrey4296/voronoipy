@@ -606,14 +606,16 @@ class Face(object):
             self.index = index
             if self.index >= Face.nextIndex:
                 Face.nextIndex = self.index + 1
-            
+
+
+    def __str__(self):
+        return "Face: {}".format(self.getCentroid())
 
     def _export(self):
         logging.debug("Exporting face: {}".format(self.index))
         return {
             'i' : self.index,
             'edges' : [x.index for x in self.edgeList if x is not None],
-            
         }
                 
     def removeEdge(self,edge):
