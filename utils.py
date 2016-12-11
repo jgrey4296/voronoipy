@@ -33,9 +33,9 @@ EPSILON = sys.float_info.epsilon
 
 def write_to_png(surface,filename,i=None):
     if i:
-        surface.write_to_png(filename+"_{}.png".format(i))
+        surface.write_to_png("{}_{}.png".format(filename,i))
     else:
-        surface.write_to_png(filename+".png")
+        surface.write_to_png("{}.png".format(filename))
 
 def drawRect(ctx,x,y,sx,sy):
     #ctx.set_source_rgba(*FRONT)
@@ -92,24 +92,31 @@ def draw_dcel_single_face(ctx,dcel,face,clear=True,force_centre=False):
     ctx.set_source_rgba(*END)
     drawCircle(ctx,*faceCentre,SMALL_RADIUS)
     #Draw face edges:
+    initial = True
     for x in face.getEdges():
         ctx.set_source_rgba(*FACE)            
         v1,v2 = x.getVertices()
         if v1 is not None and v2 is not None:
             logging.debug("Drawing Face {} edge {}".format(face.index,x.index))
             logging.debug("Drawing Face edge from ({},{}) to ({},{})".format(v1.x,v1.y,
-                                                                  v2.x,v2.y))
-            ctx.move_to(v1.x,v1.y)
-            ctx.set_source_rgba(*np.random.random(3),1)
+                                                                             v2.x,v2.y))
+            if initial:
+                ctx.move_to(v1.x,v1.y)
+                initial = False
+            #ctx.set_source_rgba(*np.random.random(3),1)
             ctx.line_to(v2.x,v2.y)
-            ctx.stroke()
+
             #additional things to draw:
-            ctx.set_source_rgba(*START)
-            drawCircle(ctx,v1.x,v1.y,SMALL_RADIUS)
+            #ctx.set_source_rgba(*START)
+            #drawCircle(ctx,v1.x,v1.y,SMALL_RADIUS)
+    if face.data is None or 'fill' not in face.data:
+        ctx.stroke()
+    else:
+        ctx.close_path()
+        ctx.fill()
     if force_centre:
         ctx.translate(-0.5,-0.5)
         ctx.translate(*centre)
-
             
         
 def draw_dcel_edges(ctx,dcel):
