@@ -251,27 +251,56 @@ class HalfEdge:
         cross = np.cross(atob,btoc)
         return cross <= 0.0
 
+    
+    def dep__lt__(self,other):
         """
         atan2 based CCW sorting. if self < other, self is CCW of other relative to
         the centroid of their face
         starting point of unit circle is (0,1) 
         """
+        logging.debug("--- Start")
         centre = self.face.getCentroid()
         a = self.origin.toArray()
         b = other.origin.toArray()
+        logging.debug("Lt: {}, {}, {}".format(centre,a,b))
+        centre *= [1,-1]
+        a *= [1,-1]
+        b *= [1,-1]
+        centre += [0,1]
+        a += [0,1]
+        b += [0,1]
+        logging.debug("Lt flipped: {}, {}, {}".format(centre,a,b))
         o_a = a - centre
         o_b = b - centre
+        logging.debug("Lt offset: {},{}".format(o_a,o_b))
         a1 = atan2(o_a[1],o_a[0])
         a2 = atan2(o_b[1],o_b[0])
-        logging.debug("lt: ({} , {}):  {} < {} (o: {} , {})".format(a,b,a1,a2,o_a,o_b))
+        logging.debug("Lt atan2: {}, {}".format(a1,a2))
         s1 = copysign(1,a1)
         s2 = copysign(1,a2)
+        logging.debug("Lt signs: {}, {}".format(s1,s2))
+        #return a1 >= a2
+    
         if s1 == s2: #same hemispheres
-            return a1 > a2
+            logging.debug("Lt same: {}, {}, {}".format(a1 >= a2, s1, s2))
+            return a1 >= a2
         else: #different hemispheres
-            if s1 > 0 and s2 < 0:
+            logging.debug("Lt diff")
+            if s1 > 0 and s2 < 0 and \
+               a1 > HALFPI and a2 < -HALFPI:
+                logging.debug("Lt s1 >0 and s2 < 0")
+                return False
+            elif s1 > 0 and s2 < 0 and \
+                 a1 < HALFPI and a2 < -HALFPI:
+                return True
+            elif s1 < 0 and s2 > 0 and \
+                 a1 > -HALFPI and a2 < HALFPI:
+                return False
+            elif s1 < 0 and s2 > 0 and \
+                 a1 > -HALFPI and a2 > HALFPI:
                 return False
             else:
+                logging.debug("Lt true")
                 return True        
     
         """
