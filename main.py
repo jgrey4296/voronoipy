@@ -8,7 +8,7 @@ import voronoi
 import utils
 import IPython
 import pickle
-from os.path import isfile
+from os.path import isfile,join,exists
 import random
 from dcelpy import dcel
 from numpy.random import choice
@@ -18,7 +18,7 @@ from numpy.random import choice
 N = 12
 X = pow(2,N)
 Y = pow(2,N)
-imgPath = "./imgs/"
+imgPath = "./imgs"
 imgName = "initialTest"
 DCEL_PICKLE = "dcel.pkl"
 currentTime = time.gmtime()
@@ -26,13 +26,13 @@ FONT_SIZE = 0.03
 VORONOI_SIZE = 100
 RELAXATION_AMNT = 3
 #format the name of the image to be saved thusly:
-saveString = "%s%s_%s-%s-%s_%s-%s" % (imgPath,
-                                          imgName,
+saveString = "{}_{}-{}-{}_{}-{}".format(  imgName,
                                           currentTime.tm_min,
                                           currentTime.tm_hour,
                                           currentTime.tm_mday,
                                           currentTime.tm_mon,
                                           currentTime.tm_year)
+savePath = join(imgPath,saveString)
 
 #setup logging:
 LOGLEVEL = logging.DEBUG
@@ -66,7 +66,7 @@ def generate_voronoi():
         dcel = voronoiInstance.finalise_DCEL()
         utils.clear_canvas(ctx)
         utils.drawDCEL(ctx,dcel)
-        utils.write_to_png(surface,"{}__relaxed_{}".format(saveString,i))
+        utils.write_to_png(surface,"{}__relaxed_{}".format(savePath,i))
         voronoiInstance.relax()
         
     logging.info("Finalised Voronoi diagram, proceeding")
@@ -112,6 +112,6 @@ IPython.embed()
 logging.info("Drawing final diagram")
 utils.clear_canvas(ctx)
 utils.drawDCEL(ctx,the_dcel)
-utils.write_to_png(surface,"{}__FINAL".format(saveString))
+utils.write_to_png(surface,"{}__FINAL".format(savePath))
 
 IPython.embed()
