@@ -636,6 +636,7 @@ class Face(object):
         self.edgeList.remove(edge)
         
     def get_bbox(self):
+        #TODO: fix this
         vertices = [x.origin for x in self.edgeList]
         vertexArrays = [x.toArray() for x in vertices if x is not None]
         if len(vertexArrays) == 0:
