@@ -195,6 +195,24 @@ class DCEL_HEdge_Sort_Tests(unittest.TestCase):
         checkVertices(v1,v2,self.face.getCentroid(),testName="trv2")
         self.assertFalse(e1<e2)
 
+    def test_raw_voronoi_3(self):
+        v1 = Vertex(0.087,0.097)
+        v2 = Vertex(0.072,0.049)
+        self.face.getCentroid = lambda: np.array([0.119,0.067])
+        e1 = self.dcel.newEdge(v1,v2,self.face)
+        e2 = self.dcel.newEdge(v2,v1,self.face)
+        checkVertices(v1,v2,self.face.getCentroid(),testName="trv3")
+        self.assertTrue(e1<e2)
+
+    def test_raw_voronoi_4(self):
+        v1 = Vertex(0.072,0.049)
+        v2 = Vertex(0.087,0.097)
+        self.face.getCentroid = lambda: np.array([0.043,0.091])
+        e1 = self.dcel.newEdge(v1,v2,self.face)
+        e2 = self.dcel.newEdge(v2,v1,self.face)
+        checkVertices(v1,v2,self.face.getCentroid(),testName="trv4")
+        self.assertTrue(e1<e2)
+
         
 
         
