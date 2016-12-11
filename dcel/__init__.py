@@ -647,10 +647,19 @@ class Face(object):
         #logging.debug("Bbox found  : {}".format(bbox))
         return bbox
 
-    def __getCentroid(self):
+    def getAvgCentroid(self):
+        k = len(self.edgeList)
+        xs = [x.origin.x for x in self.edgeList]
+        ys = [x.origin.y for x in self.edgeList]
+        norm_x = sum(xs) / k
+        norm_y = sum(ys) / k
+        return np.array([norm_x,norm_y])
+
+        
+    def getCentroid(self):
         return self.site.copy()
     
-    def getCentroid(self):
+    def ___getCentroid(self):
         bbox = self.get_bbox()
         #max - min /2
         norm = bbox[1,:] + bbox[0,:]
