@@ -23,7 +23,7 @@ DCEL_PICKLE = "dcel.pkl"
 currentTime = time.gmtime()
 FONT_SIZE = 0.03
 VORONOI_SIZE = 100
-RELAXATION_AMNT = 3
+RELAXATION_AMNT = 0
 #format the name of the image to be saved thusly:
 saveString = "%s%s_%s-%s-%s_%s-%s" % (imgPath,
                                           imgName,
@@ -89,6 +89,21 @@ the_dcel.import_data(dcel_data)
 
 #Manipulate DCEL to create map
 
+#aface = random.choice(the_dcel.faces)
+FACE_SELECTION = 98
+
+aface = list(filter(lambda x: x.index == FACE_SELECTION,the_dcel.faces))
+for x in the_dcel.faces:
+    x.sort_edges()
+
+the_dcel.faces = aface
+    
+logging.info("Selected : {}".format(aface.index))
+#aface[0].data = {'fill': True}
+logging.info("POINT FOR INSPECTING A FACE")
+IPython.embed()
+
+#the_dcel.faces = aface
 
 #Draw
 logging.info("Drawing final diagram")
