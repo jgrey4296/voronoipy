@@ -113,7 +113,7 @@ class Voronoi(object):
         """
         if len(self.events) != 0:
             raise Exception("Calculation incomplete")
-        newSites = [x.getCentroid() for x in self.dcel.faces]
+        newSites = [x.getAvgCentroid() for x in self.dcel.faces]
         logging.info("Num of Faces: {}".format(len(newSites)))
         self.initGraph(data=newSites,rerun=True)
         self.calculate_to_completion()
