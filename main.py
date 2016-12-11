@@ -10,7 +10,7 @@ import IPython
 import pickle
 from os.path import isfile
 import random
-import dcel
+from dcelpy import dcel
 from numpy.random import choice
 
 #constants:
@@ -100,7 +100,7 @@ for x in aface:
 #for x in the_dcel.faces:
 #    x.sort_edges()
 
-the_dcel.faces = aface
+#the_dcel.faces = aface
     
 #aface[0].data = {'fill': True}
 logging.info("POINT FOR INSPECTING A FACE")

@@ -1,11 +1,8 @@
 import numpy as np
 import numpy.random as random
 from numpy.linalg import det
-import math
-from math import pi, sin, cos
-import math
+from math import pi, sin, cos, nan
 import pyqtree
-import utils
 import IPython
 import heapq
 import pickle
@@ -13,7 +10,8 @@ from string import ascii_uppercase
 import sys
 from Parabola import Parabola
 from beachline import BeachLine,Left,Right,Centre,NilNode,Node
-from dcel import DCEL
+from dcelpy.dcel import DCEL
+import dcelpy.utils
 from os.path import isfile
 import logging
 
@@ -499,7 +497,7 @@ class Voronoi(object):
         #the frontier:
         # Essentially a horizontal travelling sweep line to draw segments
         self.ctx.set_source_rgba(*BEACH_LINE_COLOUR2,1)
-        leftmost_x = math.nan
+        leftmost_x = nan
         ##Get the chain of arcs:
         chain = self.beachline.get_chain()
         if len(chain) > 1:
@@ -527,7 +525,7 @@ class Voronoi(object):
                 #intersection xs:
                 i_xs = intersections[:,0]
                 #xs that are further right than what we've drawn
-                if leftmost_x is math.nan:
+                if leftmost_x is nan:
                     valid_xs = i_xs
                 else:
                     valid_xs = i_xs[i_xs>leftmost_x]
@@ -536,7 +534,7 @@ class Voronoi(object):
                     continue
                 left_most_intersection = valid_xs.min()
                 logging.debug("Arc {0} from {1:.2f} to {2:.2f}".format(i,leftmost_x,left_most_intersection))
-                if leftmost_x is math.nan:
+                if leftmost_x is nan:
                     leftmost_x = left_most_intersection - 1
                 xs = np.linspace(leftmost_x,left_most_intersection,2000)
                 #update the position
@@ -545,8 +543,8 @@ class Voronoi(object):
                 for x,y in frontier_arc:
                     utils.drawCircle(self.ctx,x,y,BEACH_RADIUS)
 
-        if len(chain) > 0 and (leftmost_x is math.nan or leftmost_x < 1.0):
-            if leftmost_x is math.nan:
+        if len(chain) > 0 and (leftmost_x is nan or leftmost_x < 1.0):
+            if leftmost_x is nan:
                 leftmost_x = 0
             #draw the last arc:
             logging.debug("Final Arc from {0:.2f} to {1:.2f}".format(leftmost_x,1.0))
