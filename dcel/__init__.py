@@ -623,11 +623,11 @@ class Face(object):
         self.edgeList.remove(edge)
         
     def get_bbox(self):
-        vertexPairs = [x.getVertices() for x in self.edgeList]
-        vertexArrays = [(x.toArray(),y.toArray()) for x,y in vertexPairs if x is not None and y is not None]
+        vertices = [x.origin for x in self.edgeList]
+        vertexArrays = [x.toArray() for x in vertices if x is not None]
         if len(vertexArrays) == 0:
             return np.array([[0,0],[0,0]])
-        allVertices = np.array([x for (x,y) in vertexArrays for x in (x,y)])
+        allVertices = np.array([x for x in vertexArrays])
         bbox = np.array([[allVertices[:,0].min(), allVertices[:,1].min()],
                          [allVertices[:,0].max(), allVertices[:,1].max()]])
         #logging.debug("Bbox source : {}".format(allVertices))
@@ -676,7 +676,7 @@ class Face(object):
         """ Order the edges anti-clockwise, by starting point """
         logging.debug("Sorting edges")
         self.edgeList = sorted(self.edgeList)
-        self.edgeList.reverse()
+        #self.edgeList.reverse()
         logging.debug("Sorted edges: {}".format([str(x.index) for x in self.edgeList])) 
         
         
@@ -846,9 +846,9 @@ class DCEL(object):
         logging.debug("Created Edge Pair: {}".format(e2.index))
         return e1
         
-    def newFace(self):
+    def newFace(self,site_x,site_y):
         """ Creates a new face to link edges """
-        newFace = Face()
+        newFace = Face(site_x,site_y)
         self.faces.append(newFace)
         return newFace
 
