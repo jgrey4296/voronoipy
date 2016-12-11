@@ -503,19 +503,20 @@ class HalfEdge:
         #Swap to maintain counter-clockwise property
         if self.fixed or self.twin.fixed:
             logging.debug("Fixing an already fixed line")
-            #return
+            return
         if self.origin is not None and self.twin.origin is not None:
-            #angle = utils.angle_between_points(self.origin.toArray(),
-            #                                   self.twin.origin.toArray())
-            cmp = self < self.twin
-            otherCmp = self.twin < self
-            logging.debug("Cmp Pair: {} - {}".format(cmp,otherCmp))
-            if cmp != otherCmp:
+            if self.face == self.twin.face:
+                raise Exception("Duplicate faces?")            
+            selfcmp = self < self.twin
+            othercmp = self.twin < self
+            logging.debug("Cmp Pair: {} - {}".format(selfcmp,othercmp))
+            if selfcmp != othercmp:
                 logging.debug("Mismatched Indices: {}-{}".format(self.index,self.twin.index))
                 logging.debug("Mismatched: {} - {}".format(self,self.twin))
+                IPython.embed()
                 raise Exception("Mismatched orientations")
-            logging.debug("CMP: {}".format(cmp))
-            if cmp:
+            logging.debug("CMP: {}".format(selfcmp))
+            if not selfcmp:
                 logging.debug("Swapping the vertices of line {} and {}".format(self.index,self.twin.index))
                 #unregister
                 self.twin.origin.unregisterHalfEdge(self.twin)
@@ -531,15 +532,16 @@ class HalfEdge:
 
                 reCheck = self < self.twin
                 reCheck_opposite = self.twin < self
-                if reCheck or reCheck_opposite:
+                if False: #not reCheck or not reCheck_opposite:
                     logging.warn("Re-Orientation failed")
+                    IPython.embed()
                     raise Exception("Re-Orientation failed")
                 
             self.fixed = True
             self.twin.fixed = True
 
     def clearVertices(self):
-        """ move vertices from the edge, clearing the vertex->edge references as well   """
+        """ remove vertices from the edge, clearing the vertex->edge references as well   """
         v1 = self.origin
         v2 = self.twin.origin
         self.origin = None
