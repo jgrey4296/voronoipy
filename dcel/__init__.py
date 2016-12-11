@@ -347,22 +347,46 @@ class HalfEdge:
             raise Exception("Trying to sort a Halfedge with something else")
         if self.origin is None or other.origin is None:
             raise Exception("Trying to compare against ill-formed edges")
-        logging.debug("---- Half Edge Comparision")
+        logging.debug("---- Half Edge Comparison")
         logging.debug("HELT: {} - {}".format(self.index,other.index))
         retValue = False
         #flip y axis for ease
-        centre = [0,1] + (self.face.getCentroid() * [1,-1])
-        a = [0,1] + (self.origin.toArray() * [1,-1])
-        b = [0,1] + (other.origin.toArray() * [1,-1])
+        centre = self.face.getCentroid()
+        a = self.origin.toArray()
+        b = other.origin.toArray()
+
+        centre *= 100
+        centre = centre.astype(int)
+        centre *= [1,-1]
+        centre += [0,100]
+        
+        a *= 100
+        a = a.astype(int)
+        a *= [1,-1]
+        a += [0,100]
+        
+        b *= 100
+        b = b.astype(int)
+        b *= [1,-1]
+        b += [0,100]
+        
+        logging.debug("Origin values: {}, {}".format(self.origin,other.origin))
         logging.debug("Comp: {}, {}, {}".format(centre,a,b))
         #offsets:
         o_a = a - centre
         o_b = b - centre
+        logging.debug("Offset values: {}, {}".format(o_a,o_b))
         #this, while in the SO answer, does not seem sufficient:
         # if o_a[0] >= 0 and o_b[0] < 0:
-        #     retValue = True
+        #     if o_a[1] > 0 and o_b[1] > 0:
+        #         retValue = False
+        #     else:
+        #         retValue = True
         # elif o_a[0] < 0 and o_b[0] >= 0:
-        #     retValue = False
+        #     if o_a[1] > 0:
+        #         retValue = True
+        #     else:
+        #         retValue = False
         # elif np.allclose([o_a[0],o_b[0]],0):
         #     logging.debug("On same horizontal line")
         #     if o_a[1] >= 0 or o_b[1] >= 0:
@@ -370,13 +394,21 @@ class HalfEdge:
         #     else:
         #         retValue = b[1] > a[1]
         #As such, only use the full cross product calculation
+        #else:
         if True:
             det = np.cross(o_a,o_b)
             logging.debug("Det Value: {}".format(det))
             if det < 0:
                 retValue = True
             elif det > 0:
-                retValue = False
+                if o_a[1] < 0 or o_b[1] < 0:
+                    retValue = True
+                elif o_b[1] > o_a[1] and o_a[0] > 0:
+                    retValue = True
+                elif o_b[1] < o_a[1] and o_a[0] < 0:
+                    retValue = True
+                else:
+                    retValue = False
             else:
                 logging.debug("Comparing by distance to face centre")
                 d1 = utils.get_distance(o_a,centre)
@@ -384,8 +416,10 @@ class HalfEdge:
                 logging.debug("D1: {} -- D2: {}".format(d1,d2))
                 retValue = (d1 < d2)[0]
 
-        logging.debug("CW: {}".format(retValue))
+        logging.debug("CCW: {}".format(retValue))
         #invert because of inverted y axis
+        if ip:
+            IPython.embed()
         return retValue
 
 
