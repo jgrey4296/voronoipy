@@ -93,7 +93,7 @@ class Voronoi(object):
             if (site[0],site[1]) in usedCoords:
                 logging.warn("Skipping: {}".format(site))
                 continue
-            futureFace = self.dcel.newFace()
+            futureFace = self.dcel.newFace(site[0],site[1])
             event = SiteEvent(site,face=futureFace)
             heapq.heappush(self.events,event)
             self.sites.append(event)
@@ -114,6 +114,7 @@ class Voronoi(object):
         if len(self.events) != 0:
             raise Exception("Calculation incomplete")
         newSites = [x.getCentroid() for x in self.dcel.faces]
+        logging.info("Num of Faces: {}".format(len(newSites)))
         self.initGraph(data=newSites,rerun=True)
         self.calculate_to_completion()
 
@@ -388,7 +389,10 @@ class Voronoi(object):
             if intersection is not None and intersection.shape[0] > 0:
                 newVertex = self.dcel.newVertex(intersection[0,0],intersection[0,1])
                 c.addVertex(newVertex)
-                logging.debug("After modification is infinite? : {}".format(c.isInfinite()))
+                isInfiniteAfterIntersection = c.isInfinite()
+                if isInfiniteAfterIntersection:
+                    raise Exception("After modification is infinite")
+
                 if DEBUG_INFINITE_RESOLUTION and surface and filename:
                     saveName = "{}_edge_completion_{}".format(filename,i)
                     utils.drawDCEL(self.ctx,self.dcel)
