@@ -10,8 +10,8 @@ from string import ascii_uppercase
 import sys
 from Parabola import Parabola
 from beachline import BeachLine,Left,Right,Centre,NilNode,Node
-from dcelpy.dcel import DCEL
-import dcelpy.utils
+from dcel import DCEL
+from dcel import utils
 from os.path import isfile
 import logging
 
@@ -55,7 +55,7 @@ class Voronoi(object):
         self.sites = []
         #backup of all circle events
         self.circles = []
-        #The beach line
+
         self.beachline = None
         #The sweep line position
         self.sweep_position = None
@@ -117,8 +117,6 @@ class Voronoi(object):
         self.calculate_to_completion()
 
         
-        
-    
     def calculate_to_completion(self):
         finished = False
         i = 0
@@ -176,6 +174,10 @@ class Voronoi(object):
 
     #FORTUNE METHODS
     def _handleSiteEvent(self,event):
+        """
+        provided with a site event, add it to the beachline in the appropriate place
+        then update/remove any circle events that trios of arcs generate
+        """
         logging.debug("Handling Site Event: {}".format(event))
         #for visualisation: add an arc
         new_arc = Parabola(*event.loc,self.sweep_position.y())
@@ -194,7 +196,7 @@ class Voronoi(object):
                                                              closest_arc_node,
                                                              closest_arc_node.get_successor()))
         logging.debug("Direction: {}".format(dir))
-        
+
         #remove false alarm circle events
         if closest_arc_node.left_circle_event is not None:
             self._delete_circle_event(closest_arc_node.left_circle_event)
@@ -252,6 +254,10 @@ class Voronoi(object):
         self._calculate_circle_events(new_node)
         
     def _handleCircleEvent(self,event):
+        """
+        provided a circle event, add a new vertex to the dcel, 
+        then update the beachline to connect the two sides of the arc that has disappeared
+        """
         logging.debug("Handling Circle Event: {}".format(event))
         #remove disappearing arc from tree
         #and update breakpoints, remove false alarm circle events
@@ -331,6 +337,9 @@ class Voronoi(object):
         
     #-------------------- Fortune Methods
     def _calculate_circle_events(self,node,left=True,right=True):
+        """
+        Given an arc node, get the arcs either side, and determine if/when it will disappear
+        """
         logging.debug("Calculating circle events for: {}".format(node))
         #Generate a circle event for left side, and right side
         left_triple = self.beachline.get_predecessor_triple(node)

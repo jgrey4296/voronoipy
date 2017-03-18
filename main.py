@@ -10,7 +10,7 @@ import IPython
 import pickle
 from os.path import isfile,join,exists
 import random
-from dcelpy import dcel
+import dcel
 from numpy.random import choice
 
 #constants:
@@ -23,7 +23,7 @@ imgName = "initialTest"
 DCEL_PICKLE = "dcel.pkl"
 currentTime = time.gmtime()
 FONT_SIZE = 0.03
-VORONOI_SIZE = 100
+VORONOI_SIZE = 400
 RELAXATION_AMNT = 3
 #format the name of the image to be saved thusly:
 saveString = "{}_{}-{}-{}_{}-{}".format(  imgName,
