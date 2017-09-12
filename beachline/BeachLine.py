@@ -1,5 +1,8 @@
 import logging as root_logger
 from . import utils
+from .utils import Directions
+from .NilNode import NilNode
+from .Node import Node
 logging = root_logger.getLogger(__name__)
 
 
@@ -65,12 +68,13 @@ class BeachLine:
             return self.root
         else:
             node,direction = self.search(value)
-            if isinstance(direction,Right) or isinstance(direction,Centre):
+            if direction is Directions.RIGHT or direction is directions.CENTRE:
                 return self.insert_successor(node,value)
             else: #isinstance(direction,Left):
                 return self.insert_predecessor(node,value)
         
     def insert_successor(self,existing_node,newValue):
+        assert(existing_node is NilNode or isinstance(existing_node, Node))
         self.arcs_added.append(newValue)
         new_node = Node(newValue,arc=self.arc)
         self.nodes.append(new_node)
@@ -84,6 +88,7 @@ class BeachLine:
         return new_node
 
     def insert_predecessor(self,existing_node,newValue):
+        assert(existing_node is NilNode or isinstance(existing_node, Node))
         self.arcs_added.append(newValue)
         new_node = Node(newValue,arc=self.arc)
         self.nodes.append(new_node)
@@ -102,6 +107,7 @@ class BeachLine:
     
     def delete_node(self,node):
         """ Delete a value from the tree """
+        assert(node is NilNode or isinstance(node, Node))
         if node == NilNode:
             return        
         if self.arc:
@@ -127,13 +133,13 @@ class BeachLine:
         while not found:
             comp = current.compare(x,d=d)
             logging.debug("Moving: {}".format(comp))
-            if isinstance(comp,Left):
+            if comp is Directions.LEFT:
                 parent = current
                 current = current.left
-            elif isinstance(comp,Right):
+            elif comp is Directions.RIGHT:
                 parent = current
                 current = current.right
-            elif isinstance(comp,Centre):
+            elif comp is Directions.CENTRE:
                 #ie: spot on
                 parent = current
                 found = True
@@ -157,6 +163,7 @@ class BeachLine:
         return self.root.getMax()
         
     def balance(self,node):
+        assert(node is NilNode or isinstance(node, Node))
         utils.rbtreeFixup(self,node)
 
     def get_chain(self):

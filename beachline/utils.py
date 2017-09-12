@@ -1,4 +1,9 @@
 from enum import Enum
+import logging as root_logger
+
+from .NilNode import NilNode
+
+logging = root_logger.getLogger(__name__)
 
 Directions = Enum('Directions', 'LEFT RIGHT CENTRE')
 
