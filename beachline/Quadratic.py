@@ -1,7 +1,9 @@
 from math import sqrt, trunc
 import numpy as np
 import IPython
-import logging
+import logging as root_logger
+logging = root_logger.getLogger(__name__)
+
 
 class Quadratic(object):
 

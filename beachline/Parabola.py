@@ -1,8 +1,10 @@
 import numpy as np
-import logging
+import logging as root_logger
 import IPython
+from .Quadratic import Quadratic as Q
 
-from Quadratic import Quadratic as Q
+logging = root_logger.getLogger(__name__)
+
 
 class Parabola(object):
     #todo: if fy-d == 0: degenerate case, is a straight line
