@@ -4,4 +4,5 @@ all:
 
 clean:
 	-rm *.pkl
+	-rm imgs/*
 	python main.py

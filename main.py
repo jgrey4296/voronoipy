@@ -25,7 +25,7 @@ imgName = "initialTest"
 DCEL_PICKLE = "dcel.pkl"
 currentTime = time.gmtime()
 FONT_SIZE = 0.03
-VORONOI_SIZE = 400
+VORONOI_SIZE = 20
 RELAXATION_AMNT = 3
 #format the name of the image to be saved thusly:
 saveString = "{}_{}-{}-{}_{}-{}".format(  imgName,
@@ -42,7 +42,7 @@ logFileName = "log.voronoi"
 logging.basicConfig(filename=logFileName,level=LOGLEVEL,filemode='w')
 
 console = logging.StreamHandler()
-console.setLevel(logging.INFO)
+console.setLevel(logging.DEBUG)
 logging.getLogger('').addHandler(console)
 
 #setup

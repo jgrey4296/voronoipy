@@ -4,7 +4,7 @@ import pyqtree
 import IPython
 import heapq
 import pickle
-import logging
+import logging as root_logger
 import sys
 from os.path import isfile
 from string import ascii_uppercase
@@ -15,6 +15,7 @@ from beachline import BeachLine, NilNode, Node, Parabola
 from beachline.utils import Directions
 from dcel import DCEL, utils
 
+logging = root_logger.getLogger(__name__)
 #If true, will draw each frame as infinite lines are made finite
 DEBUG_INFINITE_RESOLUTION = False
 
