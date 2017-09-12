@@ -1,19 +1,19 @@
 import numpy as np
 import numpy.random as random
-from numpy.linalg import det
-from math import pi, sin, cos, nan
 import pyqtree
 import IPython
 import heapq
 import pickle
-from string import ascii_uppercase
-import sys
-from Parabola import Parabola
-from beachline import BeachLine,Left,Right,Centre,NilNode,Node
-from dcel import DCEL
-from dcel import utils
-from os.path import isfile
 import logging
+import sys
+from os.path import isfile
+from string import ascii_uppercase
+from numpy.linalg import det
+from math import pi, sin, cos, nan
+
+from beachline import BeachLine, NilNode, Node, Parabola
+from beachline.utils import Directions
+from dcel import DCEL, utils
 
 #If true, will draw each frame as infinite lines are made finite
 DEBUG_INFINITE_RESOLUTION = False
@@ -204,7 +204,7 @@ class Voronoi(object):
             self._delete_circle_event(closest_arc_node.right_circle_event)
             
         #split the beachline
-        if isinstance(dir,Centre) or isinstance(dir,Right):
+        if dir is Directions.CENTRE or dir is Directions.RIGHT:
             new_node = self.beachline.insert_successor(closest_arc_node,new_arc)
             duplicate_node = self.beachline.insert_successor(new_node,closest_arc_node.value)
         else:
@@ -580,7 +580,7 @@ class Voronoi(object):
 #--------------------
 #Event class - For CIRCLE/SITE events
 
-class VEvent(object):
+class VEvent:
 
     def __init__(self,site_location,i=-1):
         self.loc = site_location #tuple
@@ -611,7 +611,7 @@ class CircleEvent(VEvent):
             raise Exception("Trying to add a circle event to a taken right node: {} : {}".format(sourceNode,sourceNode.right_circle_event))
         super().__init__(site_loc,i=i)
         self.source = sourceNode
-        self.vertex = voronoiVertex #vvertex == centre of circle, not lowest point
+        self.vertex = voronoiVertex #vertex == centre of circle, not lowest point
         self.active = True
         self.left = left
         if left:

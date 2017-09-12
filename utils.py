@@ -11,6 +11,8 @@ import IPython
 import logging
 import sys
 import random
+from beachline import Parabola
+
 
 DRAW_TEXT = True
 

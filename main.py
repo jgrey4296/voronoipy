@@ -1,17 +1,19 @@
-#!/users/jgrey/anaconda/bin/python
 import sys
 import time
 import math
 import cairo
 import logging
-import voronoi
-import utils
 import IPython
-import pickle
 from os.path import isfile,join,exists
 import random
-import dcel
 from numpy.random import choice
+
+
+import pickle
+import voronoi
+import utils
+import dcel
+
 
 #constants:
 #Size of the screen:
@@ -36,7 +38,7 @@ savePath = join(imgPath,saveString)
 
 #setup logging:
 LOGLEVEL = logging.DEBUG
-logFileName = "voronoi.log"
+logFileName = "log.voronoi"
 logging.basicConfig(filename=logFileName,level=LOGLEVEL,filemode='w')
 
 console = logging.StreamHandler()
