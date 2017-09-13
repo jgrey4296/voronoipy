@@ -17,6 +17,8 @@ from cairo_utils.beachline import BeachLine, NilNode, Node
 from cairo_utils.beachline.operations import Directions
 from cairo_utils.dcel import DCEL
 
+from .Events import SiteEvent, CircleEvent
+
 logging = root_logger.getLogger(__name__)
 #If true, will draw each frame as infinite lines are made finite
 DEBUG_INFINITE_RESOLUTION = False
@@ -40,15 +42,14 @@ SWEEP_LINE_COLOUR = [0,0,1,1]
 LINE_WIDTH = 0.002
 #:
 BBOX = np.array([0,0,1,1]) #the bbox of the final image
-currentStep = 0
 EPSILON = sys.float_info.epsilon
 
 class Voronoi:
     """ Creates a random selection of points, and step by step constructs
         a voronoi diagram
     """
-    def __init__(self,ctx,sizeTuple,num_of_nodes=10):
-        self.ctx = ctx
+    def __init__(self,sizeTuple,num_of_nodes=10, bbox=BBOX, save_name=SAVENAME):
+        self.current_step = 0
         self.sX = sizeTuple[0]
         self.sY = sizeTuple[1]
         self.nodeSize = num_of_nodes
@@ -58,23 +59,37 @@ class Voronoi:
         self.sites = []
         #backup of all circle events
         self.circles = []
+        #storage of breakpoint tuples -> halfedge
+        self.halfEdges = {}
+        #The bbox of the diagram
+        self.bbox = bbox
 
+        #The Beach Line Data Structure
         self.beachline = None
         #The sweep line position
         self.sweep_position = None
         #The output voronoi diagram as a DCEL
-        self.dcel = None
-        #storage of breakpoint tuples -> halfedge
-        self.halfEdges = {}
+        self.dcel = DCEL(bbox=BBOX)
 
+        self.save_file_name = save_name
+        
+    def reset(self):
+        """ Reset the internal data structures """
+        self.dcel = DCEL(bbox=BBOX)
+        self.events = []
+        self.circles = []
+        self.halfEdges = []
+        self.beachline =
+        self.sweep_position = None
+        self.beachline = BeachLine()
+        self.current_step = 0
+
+        
     def initGraph(self,data=None,rerun=False):
         """ Create a graph of initial random sites """
         logging.debug("Initialising graph")
-        self.dcel = DCEL(bbox=BBOX) #init the dcel
-        self.events = []
-        self.sites = []
-        self.circles = []
-        self.halfEdges = {}
+        self.reset()
+        
         values = data
         if values is None and not rerun:
             values = self.load_graph()
@@ -99,9 +114,6 @@ class Voronoi:
             heapq.heappush(self.events,event)
             self.sites.append(event)
             usedCoords.append((site[0],site[1]))
-        
-        #Create beachline
-        self.beachline = BeachLine()
 
         #Save the nodes
         if not rerun:
@@ -112,29 +124,25 @@ class Voronoi:
         """ Having calculated the voronoi diagram, use the centroids of 
             the faces instead of the sites, and retrun the calculation
         """
-        if len(self.events) != 0:
-            raise Exception("Calculation incomplete")
+        assert(not bool(self.events))
         newSites = [x.getAvgCentroid() for x in self.dcel.faces]
         logging.info("Num of Faces: {}".format(len(newSites)))
         self.initGraph(data=newSites,rerun=True)
         self.calculate_to_completion()
-
         
     def calculate_to_completion(self):
+        """ Calculate the entire voronoi for all points """
         finished = False
-        i = 0
         while not finished:
             logging.debug("Calculating step: {}".format(i))
             finished = self._calculate(i)
-            i += 1
+            self.current_step += 1
 
     def _calculate(self,i):
         """ Calculate the next step of the voronoi diagram,
             Return True on completion, False otherwise
         """
-        global currentStep
-        currentStep = i
-        if len(self.events) == 0: #finished calculating
+        if not bool(self.events): #finished calculating
             return True
         ##handle site / circle event
         event = heapq.heappop(self.events)
@@ -160,19 +168,17 @@ class Voronoi:
         """ Cleanup the DCEL of the voronoi diagram, 
             completing faces and constraining to a bbox 
         """
-        if len(self.events) != 0:
-            raise Exception("Voronoi calculation not completed")
-        logging.debug("\n\nFinalising DCEL")
+        assert(not bool(self.events))
+        logging.debug("---------- Finalising DCEL")
         logging.debug(self.dcel)
         #Not a pure DCEL operation as it requires curve intersection:
         self._complete_edges()
-        #pure DCEL operations:
+        #purge obsolete DCEL data:
         self.dcel.purge_infinite_edges()
         self.dcel.constrain_half_edges(bbox=BBOX)
         self.dcel.fixup_halfedges()
         #todo: connect edges of faces together
         self._complete_faces()
-        #logging.debug(self.dcel)
         return self.dcel
 
     #FORTUNE METHODS
@@ -181,6 +187,7 @@ class Voronoi:
         provided with a site event, add it to the beachline in the appropriate place
         then update/remove any circle events that trios of arcs generate
         """
+        assert(isinstance(event, SiteEvent))
         logging.debug("Handling Site Event: {}".format(event))
         #for visualisation: add an arc
         new_arc = Parabola(*event.loc,self.sweep_position.y())
@@ -214,8 +221,7 @@ class Voronoi:
             new_node = self.beachline.insert_predecessor(closest_arc_node,new_arc)
             duplicate_node = self.beachline.insert_predecessor(new_node,closest_arc_node.value)
 
-        if not isinstance(new_node,Node):
-            raise Exception("Bad Creation of Beach line node")
+        assert(isinstance(new_node, Node))
             
         newTriple = [closest_arc_node.value.id,new_node.value.id,duplicate_node.value.id]
         tripleString = "-".join([ascii_uppercase[x] if x < 26 else str(x) for x in newTriple])
@@ -261,6 +267,7 @@ class Voronoi:
         provided a circle event, add a new vertex to the dcel, 
         then update the beachline to connect the two sides of the arc that has disappeared
         """
+        assert(isinstance(event, CircleEvent))
         logging.debug("Handling Circle Event: {}".format(event))
         #remove disappearing arc from tree
         #and update breakpoints, remove false alarm circle events
@@ -293,6 +300,7 @@ class Voronoi:
             e1.addVertex(newVertex)
         else:
             logging.debug("No r-edge found for {}-{}".format(pre,node))
+            
         if e2:
             logging.debug("Adding vertex to {}-{}".format(node,suc))
             e2.addVertex(newVertex)
@@ -330,12 +338,12 @@ class Voronoi:
     ## UTILITY METHODS ----------------------------------------
     #-------------------- Import / Export
     def save_graph(self,values):
-        with open(SAVENAME,'wb') as f:
+        with open(self.save_file_name,'wb') as f:
             pickle.dump(values,f)
         
     def load_graph(self):
-        if isfile(SAVENAME):
-            with open(SAVENAME,'rb') as f:
+        if isfile(self.save_file_name):
+            with open(self.save_file_name,'rb') as f:
                 return pickle.load(f)
         
     #-------------------- Fortune Methods
@@ -448,9 +456,9 @@ class Voronoi:
             return
         #if True: #loc[1] > self.sweep_position[0]:
         if left:   
-            event = CircleEvent(loc,sourceNode,voronoiVertex,i=currentStep)
+            event = CircleEvent(loc,sourceNode,voronoiVertex,i=self.current_step)
         else:
-            event = CircleEvent(loc,sourceNode,voronoiVertex,left=False,i=currentStep)
+            event = CircleEvent(loc,sourceNode,voronoiVertex,left=False,i=self.current_step)
         logging.debug("Adding: {}".format(event))
         heapq.heappush(self.events,event)
         self.circles.append(event)
@@ -461,180 +469,5 @@ class Voronoi:
         #heapq.heapify(self.events)
         event.deactivate()
         
-    #-------------------- DEBUG Drawing Methods
-    def draw_voronoi_diagram(self,clear=True):
-        """ Draw the final diagram """
-        logging.debug("Drawing final voronoi diagram")
-        if clear:
-            utils.clear_canvas(self.ctx)
-        self.ctx.set_source_rgba(*COLOUR)
-        #draw sites
-        for site in self.sites:
-            utils.drawCircle(self.ctx,*site.loc,0.007)
-        #draw faces
-        utils.drawDCEL(self.ctx,self.dcel)                       
-
-    def draw_intermediate_states(self):
-        logging.debug("Drawing intermediate state")
-        utils.clear_canvas(self.ctx)
-        self.draw_sites()
-        self.draw_beach_line_components()
-        self.draw_sweep_line()
-        self.draw_circle_events()
-        utils.drawDCEL(self.ctx,self.dcel)
-        
-    def draw_sites(self):
-        self.ctx.set_source_rgba(*SITE_COLOUR)
-        for site in self.sites:
-            utils.drawCircle(self.ctx,*site.loc,SITE_RADIUS)
-
-    def draw_circle_events(self):
-        for event in self.circles:
-            if event.active:
-                self.ctx.set_source_rgba(*CIRCLE_COLOUR)
-                utils.drawCircle(self.ctx,*event.loc,CIRCLE_RADIUS)
-            else:
-                self.ctx.set_source_rgba(*CIRCLE_COLOUR_INACTIVE)
-                utils.drawCircle(self.ctx,*event.loc,CIRCLE_RADIUS)
-                
-    def draw_beach_line_components(self):
-        #the arcs themselves
-        self.ctx.set_source_rgba(*BEACH_LINE_COLOUR,0.1)
-        xs = np.linspace(0,1,2000)
-        for arc in self.beachline.arcs_added:
-            xys = arc(xs)
-            for x,y in xys:
-                utils.drawCircle(self.ctx,x,y,BEACH_RADIUS)
-        #--------------------
-        #the frontier:
-        # Essentially a horizontal travelling sweep line to draw segments
-        self.ctx.set_source_rgba(*BEACH_LINE_COLOUR2,1)
-        leftmost_x = nan
-        ##Get the chain of arcs:
-        chain = self.beachline.get_chain()
-        if len(chain) > 1:
-            enumerated = list(enumerate(chain))
-            pairs = zip(enumerated[0:-1],enumerated[1:])
-            for (i,a),(j,b) in pairs:
-                logging.debug("Drawing {} -> {}".format(a,b))
-                intersections = a.value.intersect(b.value,self.sweep_position.y())
-                #print("Intersections: ",intersections)
-                if len(intersections) == 0:
-                    logging.exception("NO INTERSECTION: {} - {}".format(i,j))
-                    #Draw the non-intersecting line as red
-                    self.ctx.set_source_rgba(*BEACH_NO_INTERSECT_COLOUR)
-                    xs = np.linspace(0,1,2000)
-                    axys = a.value(xs)
-                    bxys = b.value(xs)
-                    for x,y in axys:
-                        utils.drawCircle(self.ctx,x,y,BEACH_RADIUS)
-                    for x,y in bxys:
-                        utils.drawCircle(self.ctx,x,y,BEACH_RADIUS)
-                    self.ctx.set_source_rgba(*BEACH_LINE_COLOUR2,1)
-                    continue
-                    #----------
-                    #raise Exception("No intersection point")
-                #intersection xs:
-                i_xs = intersections[:,0]
-                #xs that are further right than what we've drawn
-                if leftmost_x is nan:
-                    valid_xs = i_xs
-                else:
-                    valid_xs = i_xs[i_xs>leftmost_x]
-                if len(valid_xs) == 0:
-                    #nothing valid, try the rest of the arcs
-                    continue
-                left_most_intersection = valid_xs.min()
-                logging.debug("Arc {0} from {1:.2f} to {2:.2f}".format(i,leftmost_x,left_most_intersection))
-                if leftmost_x is nan:
-                    leftmost_x = left_most_intersection - 1
-                xs = np.linspace(leftmost_x,left_most_intersection,2000)
-                #update the position
-                leftmost_x = left_most_intersection
-                frontier_arc = a.value(xs)
-                for x,y in frontier_arc:
-                    utils.drawCircle(self.ctx,x,y,BEACH_RADIUS)
-
-        if len(chain) > 0 and (leftmost_x is nan or leftmost_x < 1.0):
-            if leftmost_x is nan:
-                leftmost_x = 0
-            #draw the last arc:
-            logging.debug("Final Arc from {0:.2f} to {1:.2f}".format(leftmost_x,1.0))
-            xs = np.linspace(leftmost_x,1.0,2000)
-            frontier_arc = chain[-1].value(xs)
-            for x,y in frontier_arc:
-                utils.drawCircle(self.ctx,x,y,BEACH_RADIUS)
-            
-    def draw_sweep_line(self):
-        if self.sweep_position is None:
-            return        
-        self.ctx.set_source_rgba(*SWEEP_LINE_COLOUR)
-        self.ctx.set_line_width(LINE_WIDTH)
-        #a tuple
-        sweep_event = self.sweep_position
-        self.ctx.move_to(0.0,sweep_event.y())
-        self.ctx.line_to(1.0,sweep_event.y())
-        self.ctx.close_path()
-        self.ctx.stroke()
-
-
             
 
-#--------------------
-#Event class - For CIRCLE/SITE events
-
-class VEvent:
-
-    def __init__(self,site_location,i=-1):
-        self.loc = site_location #tuple
-        self.step = i
-
-    def y(self):
-        return self.loc[1]
-
-    def __lt__(self,other):
-        return self.y() < other.y()
-
-    def nodeIs(self,other):
-        return False
-    
-class SiteEvent(VEvent):
-    def __init__(self,site_loc,i=None,face=None):
-        super().__init__(site_loc,i=i)
-        self.face = face
-        
-    def __str__(self):
-        return "Site Event: Loc: {}".format(self.loc)
-
-class CircleEvent(VEvent):
-    def __init__(self,site_loc,sourceNode,voronoiVertex,left=True,i=None):
-        if left and sourceNode.left_circle_event is not None:
-            raise Exception("Trying to add a circle event to a taken left node: {} : {}".format(sourceNode,sourceNode.left_circle_event))
-        elif not left and sourceNode.right_circle_event is not None:
-            raise Exception("Trying to add a circle event to a taken right node: {} : {}".format(sourceNode,sourceNode.right_circle_event))
-        super().__init__(site_loc,i=i)
-        self.source = sourceNode
-        self.vertex = voronoiVertex #vertex == centre of circle, not lowest point
-        self.active = True
-        self.left = left
-        if left:
-            sourceNode.left_circle_event = self
-        else:
-            sourceNode.right_circle_event = self
-            
-    def __str__(self):
-        return "Circle Event: {}, Node: {}, Left: {}, Added On Step: {}".format(self.loc,
-                                                                                self.source,
-                                                                                self.left,
-                                                                                self.step)
-            
-    def deactivate(self):
-        self.active = False
-        if self.left:
-            self.source.left_circle_event = None
-        else:
-            self.source.right_circle_event = None
-        #self.source = None
-
-    def nodeIs(self,node):
-        return self.source == node
