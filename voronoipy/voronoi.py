@@ -11,9 +11,11 @@ from string import ascii_uppercase
 from numpy.linalg import det
 from math import pi, sin, cos, nan
 
-from beachline import BeachLine, NilNode, Node, Parabola
-from beachline.utils import Directions
-from dcel import DCEL, utils
+import cairo_utils as utils
+from cairo_utils import Parabola
+from cairo_utils.beachline import BeachLine, NilNode, Node
+from beachline.operations import Directions
+from dcel import DCEL
 
 logging = root_logger.getLogger(__name__)
 #If true, will draw each frame as infinite lines are made finite
