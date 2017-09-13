@@ -11,7 +11,7 @@ from numpy.random import choice
 import pickle
 from voronoipy import voronoi
 import cairo_utils as utils
-import dcel
+from cairo_utils.dcel import DCEL
 
 
 #constants:
@@ -84,7 +84,7 @@ if not isfile(DCEL_PICKLE):
     generate_voronoi()
 
 logging.info("Opening DCEL pickle")
-the_dcel = dcel.DCEL()
+the_dcel = DCEL()
 with open(DCEL_PICKLE,'rb') as f:
     dcel_data = pickle.load(f)
 the_dcel.import_data(dcel_data)

@@ -15,7 +15,7 @@ import cairo_utils as utils
 from cairo_utils import Parabola
 from cairo_utils.beachline import BeachLine, NilNode, Node
 from cairo_utils.beachline.operations import Directions
-from dcel import DCEL
+from cairo_utisl.dcel import DCEL
 
 logging = root_logger.getLogger(__name__)
 #If true, will draw each frame as infinite lines are made finite
