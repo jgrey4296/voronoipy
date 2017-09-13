@@ -9,7 +9,7 @@ import random
 from numpy.random import choice
 
 import pickle
-from .voronoipy import voronoi
+from voronoipy import voronoi
 import cairo_utils as utils
 import dcel
 
