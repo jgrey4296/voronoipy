@@ -14,7 +14,7 @@ from math import pi, sin, cos, nan
 import cairo_utils as utils
 from cairo_utils import Parabola
 from cairo_utils.beachline import BeachLine, NilNode, Node
-from beachline.operations import Directions
+from cairo_utils.beachline.operations import Directions
 from dcel import DCEL
 
 logging = root_logger.getLogger(__name__)
