@@ -15,7 +15,7 @@ import cairo_utils as utils
 from cairo_utils import Parabola
 from cairo_utils.beachline import BeachLine, NilNode, Node
 from cairo_utils.beachline.operations import Directions
-from cairo_utisl.dcel import DCEL
+from cairo_utils.dcel import DCEL
 
 logging = root_logger.getLogger(__name__)
 #If true, will draw each frame as infinite lines are made finite
@@ -43,7 +43,7 @@ BBOX = np.array([0,0,1,1]) #the bbox of the final image
 currentStep = 0
 EPSILON = sys.float_info.epsilon
 
-class Voronoi(object):
+class Voronoi:
     """ Creates a random selection of points, and step by step constructs
         a voronoi diagram
     """

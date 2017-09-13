@@ -16,15 +16,12 @@ from cairo_utils.dcel import DCEL
 
 #constants:
 #Size of the screen:
-N = 12
-X = pow(2,N)
-Y = pow(2,N)
 imgPath = "./imgs"
 imgName = "initialTest"
 DCEL_PICKLE = "dcel.pkl"
 currentTime = time.gmtime()
 FONT_SIZE = 0.03
-VORONOI_SIZE = 20
+VORONOI_SIZE = 100
 RELAXATION_AMNT = 3
 #format the name of the image to be saved thusly:
 saveString = "{}_{}-{}-{}_{}-{}".format(  imgName,
@@ -45,19 +42,15 @@ console.setLevel(logging.DEBUG)
 logging.getLogger('').addHandler(console)
 
 #setup
-surface = cairo.ImageSurface(cairo.FORMAT_ARGB32, X,Y)
-ctx = cairo.Context(surface)
-ctx.scale(X,Y)
-ctx.set_font_size(FONT_SIZE)
+surface, ctx, size = utils.drawing.setup_cairo(size_power=N)
 
 #--------------------------------------------------------------------------------
 
 def generate_voronoi():
     """ Generate and relax a voronoi diagram, then pickle the resulting DCEL  """
-    
     #Setup the voronoi diagram:
     logging.info("Creating Initial Voronoi Diagram")
-    voronoiInstance = voronoi.Voronoi(ctx,(X,Y),num_of_nodes=VORONOI_SIZE)
+    voronoiInstance = voronoi.Voronoi(ctx,(size, size),num_of_nodes=VORONOI_SIZE)
     voronoiInstance.initGraph()
     voronoiInstance.calculate_to_completion()
 
@@ -73,46 +66,33 @@ def generate_voronoi():
     logging.info("Finalised Voronoi diagram, proceeding")
     the_dcel = voronoiInstance.finalise_DCEL()
     with open(DCEL_PICKLE,'wb') as f:
-        try:
-            pickle.dump(the_dcel.export_data(),f)
-        except RecursionError as e:
-            logging.info("Recursion error")
-            IPython.embed()
+        pickle.dump(the_dcel.export_data(),f)
 
 #--------------------------------------------------------------------------------
-if not isfile(DCEL_PICKLE):
-    generate_voronoi()
 
-logging.info("Opening DCEL pickle")
-the_dcel = DCEL()
-with open(DCEL_PICKLE,'rb') as f:
-    dcel_data = pickle.load(f)
-the_dcel.import_data(dcel_data)
+def load_file_and_average():
+    logging.info("Opening DCEL pickle")
+    the_dcel = DCEL()
+    with open(DCEL_PICKLE,'rb') as f:
+        dcel_data = pickle.load(f)
+    the_dcel.import_data(dcel_data)
 
-#Manipulate DCEL to create map
-NUM_OF_FACES = 10
-aface = choice(the_dcel.faces, NUM_OF_FACES)
+    #Select a number of faces to fill:
+    NUM_OF_FACES = 10
+    aface = choice(the_dcel.faces, NUM_OF_FACES)
 
-for x in aface:
-    x.data = {'fill' : True }
-
-#FACE_SELECTION = 27
-#aface = list(filter(lambda x: x.index == FACE_SELECTION,the_dcel.faces))
-#for x in the_dcel.faces:
-#    x.sort_edges()
-
-#the_dcel.faces = aface
+    for x in aface:
+        x.data = {'fill' : True }
     
-#aface[0].data = {'fill': True}
-logging.info("POINT FOR INSPECTING A FACE")
-IPython.embed()
+    #Draw
+    logging.info("Drawing final diagram")
+    utils.clear_canvas(ctx)
+    utils.drawDCEL(ctx,the_dcel)
+    utils.write_to_png(surface,"{}__FINAL".format(savePath))
+#--------------------------------------------------------------------------------
 
-#the_dcel.faces = aface
-
-#Draw
-logging.info("Drawing final diagram")
-utils.clear_canvas(ctx)
-utils.drawDCEL(ctx,the_dcel)
-utils.write_to_png(surface,"{}__FINAL".format(savePath))
-
-IPython.embed()
+if __name__ == "__main__":
+    if not isfile(DCEL_PICKLE):
+        generate_voronoi()
+    load_file_and_average()
+   
