@@ -22,25 +22,11 @@ from .Events import SiteEvent, CircleEvent
 logging = root_logger.getLogger(__name__)
 #If true, will draw each frame as infinite lines are made finite
 DEBUG_INFINITE_RESOLUTION = False
+DEBUG_FILENAME = "voronoi_debug"
+
 
 #SAVE FILE:
 SAVENAME = "graph_data.pkl"
-
-#COLOURS and RADI:
-COLOUR = [0.2,0.1,0.6,1.0]
-COLOUR_TWO = [1.0,0.2,0.4,0.5]
-SITE_COLOUR = [1,0,0,1]
-SITE_RADIUS = 0.002
-CIRCLE_COLOUR = [1,1,0,1]
-CIRCLE_COLOUR_INACTIVE = [0,0,1,1]
-CIRCLE_RADIUS = 0.005
-BEACH_LINE_COLOUR = [0,1,0]
-BEACH_LINE_COLOUR2 = [1,1,0]
-BEACH_NO_INTERSECT_COLOUR = [1,0,0,1]
-BEACH_RADIUS = 0.002
-SWEEP_LINE_COLOUR = [0,0,1,1]
-LINE_WIDTH = 0.002
-#:
 BBOX = np.array([0,0,1,1]) #the bbox of the final image
 EPSILON = sys.float_info.epsilon
 
@@ -48,7 +34,8 @@ class Voronoi:
     """ Creates a random selection of points, and step by step constructs
         a voronoi diagram
     """
-    def __init__(self,sizeTuple,num_of_nodes=10, bbox=BBOX, save_name=SAVENAME):
+    def __init__(self, sizeTuple, num_of_nodes=10, bbox=BBOX, save_name=SAVENAME,
+                 debug_draw=False, n=10):
         self.current_step = 0
         self.sX = sizeTuple[0]
         self.sY = sizeTuple[1]
@@ -69,17 +56,25 @@ class Voronoi:
         #The sweep line position
         self.sweep_position = None
         #The output voronoi diagram as a DCEL
-        self.dcel = DCEL(bbox=BBOX)
+        self.dcel = DCEL(bbox=bbox)
 
         self.save_file_name = save_name
+
+        self.debug_draw = debug_draw
+        if self.debug_draw:
+            surf, ctx, size, n = utils.drawing.setup_cairo(N=n)
+            self.surface = surf
+            self.ctx = ctx
+            self.draw_size = size
+            self.draw_n = n
+        
         
     def reset(self):
         """ Reset the internal data structures """
-        self.dcel = DCEL(bbox=BBOX)
+        self.dcel = DCEL(bbox=self.bbox)
         self.events = []
         self.circles = []
-        self.halfEdges = []
-        self.beachline =
+        self.halfEdges = {}
         self.sweep_position = None
         self.beachline = BeachLine()
         self.current_step = 0
@@ -95,7 +90,7 @@ class Voronoi:
             values = self.load_graph()
         #create a (n,2) array of coordinates for the sites, if no data has been loaded
         if values is None or len(values) != self.nodeSize:
-            logging.debug("Creating values")
+            logging.debug("Generating values")
             for n in range(self.nodeSize):
                 newSite = random.random(2)
                 if values is None:
@@ -127,6 +122,7 @@ class Voronoi:
         assert(not bool(self.events))
         newSites = [x.getAvgCentroid() for x in self.dcel.faces]
         logging.info("Num of Faces: {}".format(len(newSites)))
+        #TODO: move each site *towards* the avg centroid        
         self.initGraph(data=newSites,rerun=True)
         self.calculate_to_completion()
         
@@ -134,17 +130,19 @@ class Voronoi:
         """ Calculate the entire voronoi for all points """
         finished = False
         while not finished:
-            logging.debug("Calculating step: {}".format(i))
-            finished = self._calculate(i)
+            logging.debug("Calculating step: {}".format(self.current_step))
+            finished = self._calculate()
+            #todo: add debug drawing here
+            
             self.current_step += 1
 
-    def _calculate(self,i):
+    def _calculate(self):
         """ Calculate the next step of the voronoi diagram,
             Return True on completion, False otherwise
         """
         if not bool(self.events): #finished calculating
             return True
-        ##handle site / circle event
+        ##Get the event
         event = heapq.heappop(self.events)
         #update the sweep position
         self.sweep_position = event
@@ -175,7 +173,7 @@ class Voronoi:
         self._complete_edges()
         #purge obsolete DCEL data:
         self.dcel.purge_infinite_edges()
-        self.dcel.constrain_half_edges(bbox=BBOX)
+        self.dcel.constrain_half_edges(bbox=self.bbox)
         self.dcel.fixup_halfedges()
         #todo: connect edges of faces together
         self._complete_faces()
@@ -391,15 +389,16 @@ class Voronoi:
         """ get any infinite edges, and complete their intersections """
         logging.debug("\n---------- Infinite Edges Completion")
         i = 0
+        
         #not is infinite, only actually caring about edges without a start
         i_pairs = [x for x in self.halfEdges.items() if x[1].origin is None]
-        logging.debug("Infinite edges num: {}".format(len(i_pairs)))
+        logging.debug("Origin-less half edges num: {}".format(len(i_pairs)))
+        
         #----
         #i_pairs = [((breakpoint nodes),edge)]
         for ((a,b),c) in i_pairs:
             i += 1
             #a and b are nodes
-            #logging.debug("All Infinite Check: {}".format(",".join([str(z.isInfinite()) for ((x,y),z) in i_pairs])))
             logging.debug("{} Infinite Edge resolution: {}-{}, infinite? {}".format(i,a,b,c.isInfinite()))
             if not c.isInfinite():
                 logging.debug("An edge that is not infinite")
@@ -411,10 +410,11 @@ class Voronoi:
                 if isInfiniteAfterIntersection:
                     raise Exception("After modification is infinite")
 
-                if DEBUG_INFINITE_RESOLUTION and surface and filename:
-                    saveName = "{}_edge_completion_{}".format(filename,i)
+                #DEBUG DRAWING:
+                if DEBUG_INFINITE_RESOLUTION and self.debug_draw:
+                    saveName = "{}_edge_completion_{}".format(DEBUG_FILENAME,i)
                     utils.drawDCEL(self.ctx,self.dcel)
-                    utils.write_to_png(surface,saveName)
+                    utils.write_to_png(self.surface,saveName)
             else:
                 raise Exception("No intersections detected when completing an infinite edge")
             logging.debug('----')
@@ -422,7 +422,7 @@ class Voronoi:
     def _complete_faces(self,dcel=None):
         if dcel is None:
             dcel = self.dcel
-        dcel.complete_faces(BBOX)
+        dcel.complete_faces(self.bbox)
         return dcel
 
             
