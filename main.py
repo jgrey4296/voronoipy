@@ -8,10 +8,9 @@ from os.path import isfile,join,exists
 import random
 from numpy.random import choice
 
-
 import pickle
-import voronoi
-import utils
+from .voronoipy import voronoi
+import cairo_utils as utils
 import dcel
 
 
