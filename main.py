@@ -23,6 +23,8 @@ currentTime = time.gmtime()
 FONT_SIZE = 0.03
 VORONOI_SIZE = 100
 RELAXATION_AMNT = 3
+N = 12
+VORONOI_DEBUG= False
 #format the name of the image to be saved thusly:
 saveString = "{}_{}-{}-{}_{}-{}".format(  imgName,
                                           currentTime.tm_min,
@@ -33,7 +35,7 @@ saveString = "{}_{}-{}-{}_{}-{}".format(  imgName,
 savePath = join(imgPath,saveString)
 
 #setup logging:
-LOGLEVEL = logging.DEBUG
+LOGLEVEL = logging.INFO
 logFileName = "log.voronoi"
 logging.basicConfig(filename=logFileName,level=LOGLEVEL,filemode='w')
 
@@ -42,7 +44,7 @@ console.setLevel(logging.DEBUG)
 logging.getLogger('').addHandler(console)
 
 #setup
-surface, ctx, size = utils.drawing.setup_cairo(size_power=N)
+surface, ctx, size, N = utils.drawing.setup_cairo(N=N)
 
 #--------------------------------------------------------------------------------
 
@@ -50,15 +52,17 @@ def generate_voronoi():
     """ Generate and relax a voronoi diagram, then pickle the resulting DCEL  """
     #Setup the voronoi diagram:
     logging.info("Creating Initial Voronoi Diagram")
-    voronoiInstance = voronoi.Voronoi(ctx,(size, size),num_of_nodes=VORONOI_SIZE)
+    voronoiInstance = voronoi.Voronoi((size, size),
+                                      num_of_nodes=VORONOI_SIZE,
+                                      debug_draw=VORONOI_DEBUG, n=N)
     voronoiInstance.initGraph()
     voronoiInstance.calculate_to_completion()
 
     #repeatedly relax and rerun
     for i in range(RELAXATION_AMNT):
         logging.info("-------------------- Relaxing iteration: {}".format(i))
+        assert(voronoiInstance.nodeSize == VORONOI_SIZE)
         dcel = voronoiInstance.finalise_DCEL()
-        utils.clear_canvas(ctx)
         utils.drawDCEL(ctx,dcel)
         utils.write_to_png(surface,"{}__relaxed_{}".format(savePath,i))
         voronoiInstance.relax()
