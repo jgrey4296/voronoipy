@@ -18,12 +18,11 @@ from cairo_utils.beachline.operations import Directions
 from cairo_utils.dcel import DCEL
 
 from .Events import SiteEvent, CircleEvent
+from .voronoi_drawing import Voronoi_Debug
+
 
 logging = root_logger.getLogger(__name__)
-#If true, will draw each frame as infinite lines are made finite
-DEBUG_INFINITE_RESOLUTION = False
-DEBUG_FILENAME = "voronoi_debug"
-
+image_dir = "imgs"
 
 #SAVE FILE:
 SAVENAME = "graph_data.pkl"
@@ -58,15 +57,12 @@ class Voronoi:
         #The output voronoi diagram as a DCEL
         self.dcel = DCEL(bbox=bbox)
 
+        #File name to pickle data to:
         self.save_file_name = save_name
-
+        
         self.debug_draw = debug_draw
         if self.debug_draw:
-            surf, ctx, size, n = utils.drawing.setup_cairo(N=n)
-            self.surface = surf
-            self.ctx = ctx
-            self.draw_size = size
-            self.draw_n = n
+            self.debug = Voronoi_Debug(n, image_dir, self)
         
         
     def reset(self):
@@ -115,14 +111,16 @@ class Voronoi:
             self.save_graph(values)
         return values
 
-    def relax(self):
+    def relax(self, amnt=0.5):
         """ Having calculated the voronoi diagram, use the centroids of 
-            the faces instead of the sites, and retrun the calculation
+            the faces instead of the sites, and rerun the calculation
         """
         assert(not bool(self.events))
-        newSites = [x.getAvgCentroid() for x in self.dcel.faces]
+        lines = [np.concatenate((x.site, x.getAvgCentroid())) for x in self.dcel.faces]
+        newSites = [utils.sampleAlongLine(*x, amnt)[0] for x in lines]
         logging.info("Num of Faces: {}".format(len(newSites)))
-        #TODO: move each site *towards* the avg centroid        
+        assert(len(self.dcel.faces) == len(lines))
+        assert(len(lines) == len(newSites))
         self.initGraph(data=newSites,rerun=True)
         self.calculate_to_completion()
         
@@ -132,8 +130,8 @@ class Voronoi:
         while not finished:
             logging.debug("Calculating step: {}".format(self.current_step))
             finished = self._calculate()
-            #todo: add debug drawing here
-            
+            if self.debug_draw:
+                self.debug.draw_intermediate_states(self.current_step)
             self.current_step += 1
 
     def _calculate(self):
@@ -166,7 +164,8 @@ class Voronoi:
         """ Cleanup the DCEL of the voronoi diagram, 
             completing faces and constraining to a bbox 
         """
-        assert(not bool(self.events))
+        if bool(self.events):
+            logging.warning("Finalising with events still to process")
         logging.debug("---------- Finalising DCEL")
         logging.debug(self.dcel)
         #Not a pure DCEL operation as it requires curve intersection:
@@ -402,28 +401,23 @@ class Voronoi:
             logging.debug("{} Infinite Edge resolution: {}-{}, infinite? {}".format(i,a,b,c.isInfinite()))
             if not c.isInfinite():
                 logging.debug("An edge that is not infinite")
+                assert(False)
             intersection = a.value.intersect(b.value)
             if intersection is not None and intersection.shape[0] > 0:
                 newVertex = self.dcel.newVertex(intersection[0,0],intersection[0,1])
                 c.addVertex(newVertex)
                 isInfiniteAfterIntersection = c.isInfinite()
                 if isInfiniteAfterIntersection:
-                    raise Exception("After modification is infinite")
-
-                #DEBUG DRAWING:
-                if DEBUG_INFINITE_RESOLUTION and self.debug_draw:
-                    saveName = "{}_edge_completion_{}".format(DEBUG_FILENAME,i)
-                    utils.drawDCEL(self.ctx,self.dcel)
-                    utils.write_to_png(self.surface,saveName)
+                    logging.warning("After modification is infinite")
+                    #halfedge may have been resolved, but its twin might not have been yet
+                    #raise Exception("After modification is infinite")
             else:
                 raise Exception("No intersections detected when completing an infinite edge")
             logging.debug('----')
 
-    def _complete_faces(self,dcel=None):
-        if dcel is None:
-            dcel = self.dcel
-        dcel.complete_faces(self.bbox)
-        return dcel
+    def _complete_faces(self):
+        self.dcel.complete_faces(self.bbox)
+        return self.dcel
 
             
     #-------------------- Beachline Edge Interaction
