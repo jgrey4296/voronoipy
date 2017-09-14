@@ -21,8 +21,9 @@ imgName = "initialTest"
 DCEL_PICKLE = "dcel.pkl"
 currentTime = time.gmtime()
 FONT_SIZE = 0.03
-VORONOI_SIZE = 100
-RELAXATION_AMNT = 3
+VORONOI_SIZE = 20
+RELAXATION_ITER = 3
+RELAXATION_AMNT = 0.4
 N = 12
 VORONOI_DEBUG= False
 #format the name of the image to be saved thusly:
@@ -59,13 +60,14 @@ def generate_voronoi():
     voronoiInstance.calculate_to_completion()
 
     #repeatedly relax and rerun
-    for i in range(RELAXATION_AMNT):
+    for i in range(RELAXATION_ITER):
         logging.info("-------------------- Relaxing iteration: {}".format(i))
         assert(voronoiInstance.nodeSize == VORONOI_SIZE)
         dcel = voronoiInstance.finalise_DCEL()
+        utils.clear_canvas(ctx)
         utils.drawDCEL(ctx,dcel)
         utils.write_to_png(surface,"{}__relaxed_{}".format(savePath,i))
-        voronoiInstance.relax()
+        voronoiInstance.relax(amnt=RELAXATION_AMNT)
         
     logging.info("Finalised Voronoi diagram, proceeding")
     the_dcel = voronoiInstance.finalise_DCEL()
