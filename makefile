@@ -4,6 +4,9 @@ LIBNAME=voronoipy
 all:
 	python main.py
 
+modify:
+	python modify.py	
+
 clean:
 	-rm *.pkl
 	-rm imgs/*

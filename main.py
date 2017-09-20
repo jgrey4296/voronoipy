@@ -6,7 +6,7 @@ import logging
 import IPython
 from os.path import isfile,join,exists
 import random
-from numpy.random import choice
+from numpy.random import choice, sample
 
 import pickle
 from voronoipy import voronoi
@@ -21,9 +21,10 @@ imgName = "initialTest"
 DCEL_PICKLE = "dcel.pkl"
 currentTime = time.gmtime()
 FONT_SIZE = 0.03
-VORONOI_SIZE = 20
+VORONOI_SIZE = 100
 RELAXATION_ITER = 3
-RELAXATION_AMNT = 0.4
+#RELAXATION_AMNT = 0.4
+RELAXATION_AMNT = sample
 N = 12
 VORONOI_DEBUG= False
 #format the name of the image to be saved thusly:
@@ -67,7 +68,10 @@ def generate_voronoi():
         utils.clear_canvas(ctx)
         utils.drawDCEL(ctx,dcel)
         utils.write_to_png(surface,"{}__relaxed_{}".format(savePath,i))
-        voronoiInstance.relax(amnt=RELAXATION_AMNT)
+        if callable(RELAXATION_AMNT):
+            voronoiInstance.relax(amnt=RELAXATION_AMNT())
+        else:
+            voronoiInstance.relax(amnt=RELAXATION_AMNT)
         
     logging.info("Finalised Voronoi diagram, proceeding")
     the_dcel = voronoiInstance.finalise_DCEL()
@@ -78,10 +82,7 @@ def generate_voronoi():
 
 def load_file_and_average():
     logging.info("Opening DCEL pickle")
-    the_dcel = DCEL()
-    with open(DCEL_PICKLE,'rb') as f:
-        dcel_data = pickle.load(f)
-    the_dcel.import_data(dcel_data)
+    the_dcel = DCEL.loadfile(DCEL_PICKLE)
 
     #Select a number of faces to fill:
     NUM_OF_FACES = 10
