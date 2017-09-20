@@ -238,7 +238,7 @@ class Voronoi:
         #set the origin points to be undefined
         #link the edges with the faces associated with the sites
         logging.debug("Adding edge")
-        newEdge = self.dcel.newEdge(None,None,face=face_b,twinFace=face_a)
+        newEdge = self.dcel.newEdge(None, None, face=face_b, twinFace=face_a)
         #newEdge = self.dcel.newEdge(None,None,face=face_a,twinFace=face_b)
 
         #if there was an edge of closest_arc -> closest_arc.successor: update it
