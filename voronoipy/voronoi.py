@@ -197,12 +197,12 @@ class Voronoi:
         #get the x position of the event
         xPos = new_arc.fx
         #search for the breakpoint interval of the beachline
-        closest_arc_node,dir = self.beachline.search(xPos)
+        closest_arc_node, direction = self.beachline.search(xPos)
         
         logging.debug("Closest Arc Triple: {} *{}* {}".format(closest_arc_node.get_predecessor(),
                                                              closest_arc_node,
                                                              closest_arc_node.get_successor()))
-        logging.debug("Direction: {}".format(dir))
+        logging.debug("Direction: {}".format(direction))
 
         #remove false alarm circle events
         if closest_arc_node.left_circle_event is not None:
@@ -211,15 +211,17 @@ class Voronoi:
             self._delete_circle_event(closest_arc_node.right_circle_event)
             
         #split the beachline
-        if dir is Directions.CENTRE or dir is Directions.RIGHT:
+        #If site is directly below the arc, or on the right of the arc, add it as a successor
+        if direction is Directions.CENTRE or direction is Directions.RIGHT:
             new_node = self.beachline.insert_successor(closest_arc_node,new_arc)
             duplicate_node = self.beachline.insert_successor(new_node,closest_arc_node.value)
         else:
+            #otherwise add it as a predecessor
             new_node = self.beachline.insert_predecessor(closest_arc_node,new_arc)
             duplicate_node = self.beachline.insert_predecessor(new_node,closest_arc_node.value)
-
         assert(isinstance(new_node, Node))
-            
+
+        #[ A, B, A]
         newTriple = [closest_arc_node.value.id,new_node.value.id,duplicate_node.value.id]
         tripleString = "-".join([ascii_uppercase[x] if x < 26 else str(x) for x in newTriple])
         logging.debug("Split {} into {}".format(str(newTriple[0]),tripleString))
@@ -239,7 +241,6 @@ class Voronoi:
         #link the edges with the faces associated with the sites
         logging.debug("Adding edge")
         newEdge = self.dcel.newEdge(None, None, face=face_b, twinFace=face_a)
-        #newEdge = self.dcel.newEdge(None,None,face=face_a,twinFace=face_b)
 
         #if there was an edge of closest_arc -> closest_arc.successor: update it
         #because closest_arc is not adjacent to successor any more, duplicate_node is
@@ -271,6 +272,8 @@ class Voronoi:
         node = event.source
         pre = node.get_predecessor()
         suc = node.get_successor()
+        assert('face' in pre.data)
+        assert('face' in suc.data)
 
         if node.left_circle_event:
             self._delete_circle_event(node.left_circle_event)
@@ -293,24 +296,24 @@ class Voronoi:
         e1 = self._getEdge(pre,node)
         e2 = self._getEdge(node,suc)
         if e1:
+            #predecessor face
             logging.debug("Adding vertex to {}-{}".format(pre,node))
             e1.addVertex(newVertex)
         else:
             logging.debug("No r-edge found for {}-{}".format(pre,node))
             
         if e2:
+            #successor face
             logging.debug("Adding vertex to {}-{}".format(node,suc))
             e2.addVertex(newVertex)
         else:
             logging.debug("No r-edge found for {}-{}".format(node,suc))
-            
-        if not 'face' in pre.data or not 'face' in suc.data:
-            raise Exception("Circle event on faceless nodes")
+
             
         #create two half-edge records for the new breakpoint of the beachline
         logging.debug("Creating a new half-edge {}-{}".format(pre,suc))
         newEdge = self.dcel.newEdge(None,newVertex,face=suc.data['face'],twinFace=pre.data['face'])
-        #newEdge = self.dcel.newEdge(None,newVertex,face=pre.data['face'],twinFace=suc.data['face'])
+
 
         if e1:
             e1.setPrev(newEdge)
