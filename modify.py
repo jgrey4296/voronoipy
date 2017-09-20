@@ -31,30 +31,37 @@ def modify(dcel):
     for face in dcel.faces:
         face.data[FaceE.NULL] = True
 
-    face = faces[1530]
+    face = choice(dcel.faces, 1)[0]
     c = random(4)
     face.data[FaceE.FILL] = c
     face.data[FaceE.TEXT] = face.index
     del face.data[FaceE.NULL]
 
-    IPython.embed(simple_prompt=True)
     for e in face.innerComponents:
-        if e.twin.face is not None:
-            del e.twin.face.data[FaceE.NULL]
+        if e.face is not None:
+            if FaceE.NULL in e.face.data:
+                del e.face.data[FaceE.NULL]
             c = random(4)
-            e.twin.face.data[FaceE.FILL] = c
-    
+            e.face.data[FaceE.FILL] = c
 
-    for edge in dcel.halfEdges:
-        edge.data[EdgeE.NULL] = True
+    face2 = choice(face.innerComponents, 1)[0].face
+    for e in face2.innerComponents:
+        if e.face is not None:
+            if FaceE.NULL in e.face.data:
+                del e.face.data[FaceE.NULL]
+            c = random(4)
+            e.face.data[FaceE.FILL] = c
+                
+    # for edge in dcel.halfEdges:
+    #     edge.data[EdgeE.NULL] = True
     
-    for vert in dcel.vertices:
-        vert.data[VertE.NULL] = True
+    # for vert in dcel.vertices:
+    #     vert.data[VertE.NULL] = True
                   
 
 if __name__ == "__main__":
     the_dcel = DCEL.loadfile(DCEL_PICKLE)
     modify(the_dcel)
     utils.clear_canvas(ctx)
-    utils.drawDCEL(ctx, the_dcel)
+    utils.drawDCEL(ctx, the_dcel, edges=True)
     utils.write_to_png(surface, save_string)
