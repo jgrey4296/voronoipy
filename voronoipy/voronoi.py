@@ -172,10 +172,20 @@ class Voronoi:
         self._complete_edges()
         #purge obsolete DCEL data:
         self.dcel.purge_infinite_edges()
+        #modify or mark edges outside bbox
         self.dcel.constrain_half_edges(bbox=self.bbox)
+        #remove edges marked for cleanup
+        self.dcel.purge_edges()
+        #remove vertices with no associated edges
+        self.dcel.purge_vertices()
+        #ensure CCW ordering
         self.dcel.fixup_halfedges()
-        #todo: connect edges of faces together
+        #Modify/connect edges or mark for cleanup
         self._complete_faces()
+        #cleanup faces
+        self.dcel.purge_faces()
+        #verify:
+        self.dcel.verify_faces_and_edges()
         return self.dcel
 
     #FORTUNE METHODS
