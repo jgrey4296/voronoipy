@@ -402,7 +402,7 @@ class Voronoi:
         logging.debug("\n---------- Infinite Edges Completion")
         i = 0
         
-        #not is infinite, only actually caring about edges without a start
+        #get only the halfedges that are originless, rather than full edges that are infinite
         i_pairs = [x for x in self.halfEdges.items() if x[1].origin is None]
         logging.debug("Origin-less half edges num: {}".format(len(i_pairs)))
         
@@ -415,15 +415,14 @@ class Voronoi:
             if not c.isInfinite():
                 logging.debug("An edge that is not infinite")
                 assert(False)
+            #intersect the breakpoints to find the vertex point
             intersection = a.value.intersect(b.value)
             if intersection is not None and intersection.shape[0] > 0:
                 newVertex = self.dcel.newVertex(intersection[0,0],intersection[0,1])
                 c.addVertex(newVertex)
                 isInfiniteAfterIntersection = c.isInfinite()
                 if isInfiniteAfterIntersection:
-                    logging.warning("After modification is infinite")
-                    #halfedge may have been resolved, but its twin might not have been yet
-                    #raise Exception("After modification is infinite")
+                    raise Exception("After modification is infinite")
             else:
                 raise Exception("No intersections detected when completing an infinite edge")
             logging.debug('----')
