@@ -7,6 +7,9 @@ all:
 modify:
 	python modify.py	
 
+circle:
+	python circle_mod.py
+
 clean:
 	-rm *.pkl
 	-rm imgs/*
