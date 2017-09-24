@@ -4,3 +4,4 @@ imgs
 *.log
 *.pkl
 .DS_Store
+log.*
