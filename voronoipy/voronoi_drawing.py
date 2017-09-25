@@ -7,8 +7,7 @@ import logging as root_logger
 import IPython
 logging = root_logger.getLogger(__name__)
 
-
-#COLOURS and RADI:
+#Constants:
 COLOUR = [0.2,0.1,0.6,1.0]
 COLOUR_TWO = [1.0,0.2,0.4,0.5]
 SITE_COLOUR = [1,0,0,1]
