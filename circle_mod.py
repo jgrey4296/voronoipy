@@ -53,7 +53,18 @@ def constrain_half_edges_to_circle(dcel, radius=RADIUS, centre=CENTRE, replace_w
         elif not any(results): #if both without: remove
             he.markForCleanup()
             removed_edges.append(he)
-        else: #one within, one without, modify
+
+    dcel.purge_edges()
+    dcel.purge_vertices()
+    dcel.purge_faces()
+    dcel.purge_infinite_edges()
+
+            
+    for he in dcel.halfEdges:
+        results = he.within_circle(centre, radius)
+        arr = he.origin.toArray()
+        if not all(results) and any(results):
+            #one within, one without, modify
             #Get the further point
             closer, further, isOrigin = he.getCloserAndFurther(centre, radius)
             if isOrigin:
@@ -82,12 +93,7 @@ def constrain_half_edges_to_circle(dcel, radius=RADIUS, centre=CENTRE, replace_w
             modified_edges.append(he)
 
     #todo: fixup faces
-            
-    dcel.purge_edges()
-    dcel.purge_vertices()
-    dcel.purge_faces()
-    dcel.purge_infinite_edges()
-    dcel.complete_faces()
+    dcel.complete_faces()            
     
 
     
