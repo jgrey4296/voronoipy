@@ -1,8 +1,9 @@
-#--------------------
-#Event class - For CIRCLE/SITE events
+""" Events: The data representations of points and circles 
+    in the voronoi calculation
+"""
 
 class VEvent:
-
+    """ The Base Class of Events """
     def __init__(self,site_location,i=-1):
         self.loc = site_location #tuple
         self.step = i
@@ -12,11 +13,9 @@ class VEvent:
 
     def __lt__(self,other):
         return self.y() < other.y()
-
-    def nodeIs(self,other):
-        return False
     
 class SiteEvent(VEvent):
+    """ Subclass for representing individual points / cell centres """
     def __init__(self,site_loc,i=None,face=None):
         super().__init__(site_loc,i=i)
         self.face = face
@@ -25,6 +24,8 @@ class SiteEvent(VEvent):
         return "Site Event: Loc: {}".format(self.loc)
 
 class CircleEvent(VEvent):
+    """ Subclass for representing the lowest point of a circle, 
+    calculated from three existing site events """
     def __init__(self,site_loc,sourceNode,voronoiVertex,left=True,i=None):
         if left and sourceNode.left_circle_event is not None:
             raise Exception("Trying to add a circle event to a taken left node: {} : {}".format(sourceNode,sourceNode.left_circle_event))
@@ -47,12 +48,9 @@ class CircleEvent(VEvent):
                                                                                 self.step)
             
     def deactivate(self):
+        """ Deactivating saves on having to reheapify """
         self.active = False
         if self.left:
             self.source.left_circle_event = None
         else:
             self.source.right_circle_event = None
-        #self.source = None
-
-    def nodeIs(self,node):
-        return self.source == node
