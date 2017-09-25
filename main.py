@@ -37,12 +37,12 @@ saveString = "{}_{}-{}-{}_{}-{}".format(  imgName,
 savePath = join(imgPath,saveString)
 
 #setup logging:
-LOGLEVEL = logging.INFO
+LOGLEVEL = logging.DEBUG
 logFileName = "log.voronoi"
 logging.basicConfig(filename=logFileName,level=LOGLEVEL,filemode='w')
 
 console = logging.StreamHandler()
-console.setLevel(logging.DEBUG)
+console.setLevel(logging.INFO)
 logging.getLogger('').addHandler(console)
 
 #setup
