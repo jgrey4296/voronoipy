@@ -505,8 +505,9 @@ class Voronoi:
         self.circles.append(event)
 
     def _delete_circle_event(self,event):
-        logging.debug("Deleting Circle Event: {}".format(event))
-        #self.events = [e for e in self.events if not e.nodeIs(event.source)]
-        #heapq.heapify(self.events)
+        """ Deactiate a circle event rather than deleting it.
+        This means instead of removal and re-heapifying, you just skip the event
+        when you come to process it """
+        logging.debug("Deactivating Circle Event: {}".format(event))
         event.deactivate()
         
