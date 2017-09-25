@@ -1,3 +1,6 @@
+""" Voronoi.py : Contains the Voronoi Class, which calculates a graphics independent DCEL
+    of a Voronoi Diagram.
+"""
 import numpy as np
 import numpy.random as random
 import pyqtree
@@ -20,25 +23,26 @@ from cairo_utils.dcel import DCEL
 from .Events import SiteEvent, CircleEvent
 from .voronoi_drawing import Voronoi_Debug
 
-
 logging = root_logger.getLogger(__name__)
-image_dir = "imgs"
 
-#SAVE FILE:
+#Constants and defaults
+image_dir = "imgs"
 SAVENAME = "graph_data.pkl"
 BBOX = np.array([0,0,1,1]) #the bbox of the final image
 EPSILON = sys.float_info.epsilon
+MAX_STEPS = 100000
 
 class Voronoi:
     """ Creates a random selection of points, and step by step constructs
         a voronoi diagram
     """
     def __init__(self, sizeTuple, num_of_nodes=10, bbox=BBOX, save_name=SAVENAME,
-                 debug_draw=False, n=10):
+                 debug_draw=False, n=10, max_steps=MAX_STEPS):
         self.current_step = 0
         self.sX = sizeTuple[0]
         self.sY = sizeTuple[1]
         self.nodeSize = num_of_nodes
+        self.max_steps = max_steps
         #Heap of site/circle events
         self.events = []
         #backup of the original sites
@@ -84,6 +88,7 @@ class Voronoi:
         values = data
         if values is None and not rerun:
             values = self.load_graph()
+            
         #create a (n,2) array of coordinates for the sites, if no data has been loaded
         if values is None or len(values) != self.nodeSize:
             logging.debug("Generating values")
@@ -94,12 +99,14 @@ class Voronoi:
                 else:
                     values = np.row_stack((values,newSite))
 
-        #create the site events:
+        #setup the initial site events:
         usedCoords = []
         for site in values:
+            #Avoid duplications:
             if (site[0],site[1]) in usedCoords:
                 logging.warn("Skipping: {}".format(site))
                 continue
+            #Create an empty face for the site
             futureFace = self.dcel.newFace(site[0],site[1])
             event = SiteEvent(site,face=futureFace)
             heapq.heappush(self.events,event)
@@ -111,23 +118,35 @@ class Voronoi:
             self.save_graph(values)
         return values
 
-    def relax(self, amnt=0.5):
+    def relax(self, amnt=0.5, faces=None):
         """ Having calculated the voronoi diagram, use the centroids of 
-            the faces instead of the sites, and rerun the calculation
+            the faces instead of the sites, and rerun the calculation.
+        Can be passed in a subset of faces
         """
         assert(not bool(self.events))
-        lines = [np.concatenate((x.site, x.getAvgCentroid())) for x in self.dcel.faces]
+
+        if faces is None:
+            faces = self.dcel.faces
+        #Figure out any faces that are excluded
+        faceIndices = set([x.index for x in faces])
+        otherFaceSites = [x.site for x in self.dcel.faces if x.index not in faces]
+        #Get a line of origin - centroid
+        lines = [np.concatenate((x.site, x.getAvgCentroid())) for x in faces]
+        #Move along that line toward the centroid
         newSites = [utils.sampleAlongLine(*x, amnt)[0] for x in lines]
-        logging.info("Num of Faces: {}".format(len(newSites)))
+        #Combine with excluded faces
+        newSites += otherFaceSites
         assert(len(self.dcel.faces) == len(lines))
         assert(len(lines) == len(newSites))
+        #Setup the datastructures with the new sites
         self.initGraph(data=newSites,rerun=True)
         self.calculate_to_completion()
         
     def calculate_to_completion(self):
         """ Calculate the entire voronoi for all points """
         finished = False
-        while not finished:
+        #Max Steps for a guaranteed exit
+        while not finished and self.current_step < self.max_steps:
             logging.debug("Calculating step: {}".format(self.current_step))
             finished = self._calculate()
             if self.debug_draw:
@@ -138,9 +157,9 @@ class Voronoi:
         """ Calculate the next step of the voronoi diagram,
             Return True on completion, False otherwise
         """
-        if not bool(self.events): #finished calculating
+        if not bool(self.events): #finished calculating, early exit
             return True
-        ##Get the event
+        ##Get the next event
         event = heapq.heappop(self.events)
         #update the sweep position
         self.sweep_position = event
@@ -345,16 +364,6 @@ class Voronoi:
             self._calculate_circle_events(suc,right=False)
         
 
-    ## UTILITY METHODS ----------------------------------------
-    #-------------------- Import / Export
-    def save_graph(self,values):
-        with open(self.save_file_name,'wb') as f:
-            pickle.dump(values,f)
-        
-    def load_graph(self):
-        if isfile(self.save_file_name):
-            with open(self.save_file_name,'rb') as f:
-                return pickle.load(f)
         
     #-------------------- Fortune Methods
     def _calculate_circle_events(self,node,left=True,right=True):
@@ -475,5 +484,13 @@ class Voronoi:
         #heapq.heapify(self.events)
         event.deactivate()
         
-            
-
+    ## UTILITY METHODS ----------------------------------------
+    #-------------------- Import / Export
+    def save_graph(self,values):
+        with open(self.save_file_name,'wb') as f:
+            pickle.dump(values,f)
+        
+    def load_graph(self):
+        if isfile(self.save_file_name):
+            with open(self.save_file_name,'rb') as f:
+                return pickle.load(f)
