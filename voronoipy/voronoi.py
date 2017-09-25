@@ -214,80 +214,89 @@ class Voronoi:
         """
         assert(isinstance(event, SiteEvent))
         logging.debug("Handling Site Event: {}".format(event))
-        #for visualisation: add an arc
+        #The new parabola made from the site
         new_arc = Parabola(*event.loc,self.sweep_position.y())
+        #get the x position of the event
+        xPos = new_arc.fx
+
         #if beachline is empty: add and return
         if self.beachline.isEmpty():
             newNode = self.beachline.insert(new_arc)
             newNode.data['face'] = event.face
             return
-                
-        #get the x position of the event
-        xPos = new_arc.fx
-        #search for the breakpoint interval of the beachline
-        closest_arc_node, direction = self.beachline.search(xPos)
-        
-        logging.debug("Closest Arc Triple: {} *{}* {}".format(closest_arc_node.get_predecessor(),
-                                                             closest_arc_node,
-                                                             closest_arc_node.get_successor()))
-        logging.debug("Direction: {}".format(direction))
 
-        #remove false alarm circle events
-        if closest_arc_node.left_circle_event is not None:
-            self._delete_circle_event(closest_arc_node.left_circle_event)
-        if closest_arc_node.right_circle_event is not None:
-            self._delete_circle_event(closest_arc_node.right_circle_event)
-            
-        #split the beachline
-        #If site is directly below the arc, or on the right of the arc, add it as a successor
-        if direction is Directions.CENTRE or direction is Directions.RIGHT:
-            new_node = self.beachline.insert_successor(closest_arc_node,new_arc)
-            duplicate_node = self.beachline.insert_successor(new_node,closest_arc_node.value)
-        else:
-            #otherwise add it as a predecessor
-            new_node = self.beachline.insert_predecessor(closest_arc_node,new_arc)
-            duplicate_node = self.beachline.insert_predecessor(new_node,closest_arc_node.value)
-        assert(isinstance(new_node, Node))
-
-        #[ A, B, A]
-        newTriple = [closest_arc_node.value.id,new_node.value.id,duplicate_node.value.id]
-        tripleString = "-".join([ascii_uppercase[x] if x < 26 else str(x) for x in newTriple])
-        logging.debug("Split {} into {}".format(str(newTriple[0]),tripleString))
-
-        #add in the face as a data point for the new node and duplicate
-        new_node.data['face'] = event.face
-        duplicate_node.data['face'] = closest_arc_node.data['face']
+        #Otherwise, slot the arc between existing nodes
+        closest_node, direction = self._get_closest_arc_node(xPos)
+        self._remove_obsolete_circle_events(closest_node)
+        new_node, duplicate_node  = self._split_beachline(direction,
+                                                         closest_node,
+                                                         new_arc,
+                                                         event.face)
         
-        #create a half-edge pair between the two nodes, store the tuple (edge,arc)
-        face_a = new_node.data['face']
-        if 'face' in closest_arc_node.data:
-            face_b = closest_arc_node.data['face']
-        else:
-            raise Exception("A Face can't be found for a node")
-        
-        #set the origin points to be undefined
-        #link the edges with the faces associated with the sites
+        #Create an edge between the two nodes, without origin points yet
         logging.debug("Adding edge")
-        newEdge = self.dcel.newEdge(None, None, face=face_b, twinFace=face_a)
+        node_face = closest_node.data['face']
+        newEdge = self.dcel.newEdge(None, None, face=node_face, twinFace=event.face)
+        self._cleanup_edges(newEdge, new_node, closest_node, duplicate_node)
 
+        #create circle events:
+        self._calculate_circle_events(new_node)
+
+        
+    def _cleanup_edges(self, edge, new_node, node, duplicate_node):
         #if there was an edge of closest_arc -> closest_arc.successor: update it
         #because closest_arc is not adjacent to successor any more, duplicate_node is
         dup_node_succ = duplicate_node.get_successor()
         if dup_node_succ:
-            e1 = self._getEdge(closest_arc_node,dup_node_succ)
+            e1 = self._getEdge(node,dup_node_succ)
             if e1:
-                self._removeEdge(closest_arc_node,dup_node_succ)
+                self._removeEdge(node,dup_node_succ)
                 self._storeEdge(e1,duplicate_node,dup_node_succ)
                 
-        
-        logging.debug("Linking edge from {} to {}".format(closest_arc_node,new_node))
-        self._storeEdge(newEdge,closest_arc_node,new_node)
+        logging.debug("Linking edge from {} to {}".format(node,new_node))
+        self._storeEdge(edge, node, new_node)
         logging.debug("Linking r-edge from {} to {}".format(new_node,duplicate_node))
-        self._storeEdge(newEdge.twin,new_node,duplicate_node)
+        self._storeEdge(edge.twin, new_node, duplicate_node)
         
-        #create circle events:
-        self._calculate_circle_events(new_node)
+    def _get_closest_arc_node(self, xPos):
+        #search for the breakpoint interval of the beachline
+        closest_arc_node, direction = self.beachline.search(xPos)
+        logging.debug("Closest Arc Triple: {} *{}* {}".format(closest_arc_node.get_predecessor(),
+                                                             closest_arc_node,
+                                                             closest_arc_node.get_successor()))
+        logging.debug("Direction: {}".format(direction))
+        return (closest_arc_node, direction)
+
+    def _remove_obsolete_circle_events(self, node):
+        #remove false alarm circle events
+        if node.left_circle_event is not None:
+            self._delete_circle_event(node.left_circle_event)
+        if node.right_circle_event is not None:
+            self._delete_circle_event(node.right_circle_event)
+
+    def _split_beachline(self, direction, node, arc, event_face):
+        #If site is directly below the arc, or on the right of the arc, add it as a successor
+        if direction is Directions.CENTRE or direction is Directions.RIGHT:
+            new_node = self.beachline.insert_successor(node, arc)
+            duplicate_node = self.beachline.insert_successor(new_node, node.value)
+        else:
+            #otherwise add it as a predecessor
+            new_node = self.beachline.insert_predecessor(node, arc)
+            duplicate_node = self.beachline.insert_predecessor(new_node, node.value)
+        assert(isinstance(new_node, Node))
         
+        #add in the faces as a data point for the new node and duplicate
+        new_node.data['face'] = event_face
+        duplicate_node.data['face'] = node.data['face']
+
+        #Debug the new triple: [ A, B, A]
+        newTriple = [node.value.id,new_node.value.id,duplicate_node.value.id]
+        tripleString = "-".join([ascii_uppercase[x % 26] for x in newTriple])
+        logging.debug("Split {} into {}".format(str(newTriple[0]),tripleString))
+        return new_node, duplicate_node
+
+
+    #--------------------
     def _handleCircleEvent(self,event):
         """
         provided a circle event, add a new vertex to the dcel, 
