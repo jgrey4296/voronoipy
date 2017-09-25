@@ -65,7 +65,9 @@ class Voronoi:
         if self.debug_draw:
             self.debug = Voronoi_Debug(n, image_dir, self)
         
-        
+    #--------------------
+    # PUBLIC METHODS
+    #--------------------
     def reset(self):
         """ Reset the internal data structures """
         self.dcel = DCEL(bbox=self.bbox)
@@ -149,32 +151,6 @@ class Voronoi:
                 self.debug.draw_intermediate_states(self.current_step)
             self.current_step += 1
 
-    def _calculate(self):
-        """ Calculate the next step of the voronoi diagram,
-            Return True on completion, False otherwise
-        """
-        if not bool(self.events): #finished calculating, early exit
-            return True
-        ##Get the next event
-        event = heapq.heappop(self.events)
-        #update the sweep position
-        self.sweep_position = event
-        logging.debug("Sweep position: {}".format(self.sweep_position.loc))
-        #update the arcs:
-        self._update_arcs(self.sweep_position.y())
-        #handle the event:
-        if isinstance(event,SiteEvent):
-            self._handleSiteEvent(event)
-        elif isinstance(event,CircleEvent):
-            if event.active:
-                self._handleCircleEvent(event)
-            else:
-                logging.debug("-------------------- Skipping deactivated circle event")
-                logging.debug(event)
-        else:
-            raise Exception("Unrecognised Event")
-        return False 
-        
     def finalise_DCEL(self):
         """ Cleanup the DCEL of the voronoi diagram, 
             completing faces and constraining to a bbox 
@@ -203,7 +179,50 @@ class Voronoi:
         self.dcel.verify_faces_and_edges()
         return self.dcel
 
-    #FORTUNE METHODS
+    def save_graph(self,values):
+        with open(self.save_file_name,'wb') as f:
+            pickle.dump(values,f)
+        
+    def load_graph(self):
+        if isfile(self.save_file_name):
+            with open(self.save_file_name,'rb') as f:
+                return pickle.load(f)
+
+
+
+    #--------------------
+    # PRIVATE METHODS
+    #--------------------
+    def _calculate(self):
+        """ Calculate the next step of the voronoi diagram,
+            Return True on completion, False otherwise
+        """
+        if not bool(self.events): #finished calculating, early exit
+            return True
+        ##Get the next event
+        event = heapq.heappop(self.events)
+        #update the sweep position
+        self.sweep_position = event
+        logging.debug("Sweep position: {}".format(self.sweep_position.loc))
+        #update the arcs:
+        self._update_arcs(self.sweep_position.y())
+        #handle the event:
+        if isinstance(event,SiteEvent):
+            self._handleSiteEvent(event)
+        elif isinstance(event,CircleEvent):
+            if event.active:
+                self._handleCircleEvent(event)
+            else:
+                logging.debug("-------------------- Skipping deactivated circle event")
+                logging.debug(event)
+        else:
+            raise Exception("Unrecognised Event")
+        return False 
+        
+    
+    #----------
+    # MAIN VORONOI CALLS
+    #----------
     def _handleSiteEvent(self,event):
         """
         provided with a site event, add it to the beachline in the appropriate place
@@ -239,61 +258,6 @@ class Voronoi:
         #create circle events:
         self._calculate_circle_events(new_node)
 
-        
-    def _cleanup_edges(self, edge, new_node, node, duplicate_node):
-        #if there was an edge of closest_arc -> closest_arc.successor: update it
-        #because closest_arc is not adjacent to successor any more, duplicate_node is
-        dup_node_succ = duplicate_node.get_successor()
-        if dup_node_succ:
-            e1 = self._getEdge(node,dup_node_succ)
-            if e1:
-                self._removeEdge(node,dup_node_succ)
-                self._storeEdge(e1,duplicate_node,dup_node_succ)
-                
-        logging.debug("Linking edge from {} to {}".format(node,new_node))
-        self._storeEdge(edge, node, new_node)
-        logging.debug("Linking r-edge from {} to {}".format(new_node,duplicate_node))
-        self._storeEdge(edge.twin, new_node, duplicate_node)
-        
-    def _get_closest_arc_node(self, xPos):
-        #search for the breakpoint interval of the beachline
-        closest_arc_node, direction = self.beachline.search(xPos)
-        logging.debug("Closest Arc Triple: {} *{}* {}".format(closest_arc_node.get_predecessor(),
-                                                             closest_arc_node,
-                                                             closest_arc_node.get_successor()))
-        logging.debug("Direction: {}".format(direction))
-        return (closest_arc_node, direction)
-
-    def _remove_obsolete_circle_events(self, node):
-        #remove false alarm circle events
-        if node.left_circle_event is not None:
-            self._delete_circle_event(node.left_circle_event)
-        if node.right_circle_event is not None:
-            self._delete_circle_event(node.right_circle_event)
-
-    def _split_beachline(self, direction, node, arc, event_face):
-        #If site is directly below the arc, or on the right of the arc, add it as a successor
-        if direction is Directions.CENTRE or direction is Directions.RIGHT:
-            new_node = self.beachline.insert_successor(node, arc)
-            duplicate_node = self.beachline.insert_successor(new_node, node.value)
-        else:
-            #otherwise add it as a predecessor
-            new_node = self.beachline.insert_predecessor(node, arc)
-            duplicate_node = self.beachline.insert_predecessor(new_node, node.value)
-        assert(isinstance(new_node, Node))
-        
-        #add in the faces as a data point for the new node and duplicate
-        new_node.data['face'] = event_face
-        duplicate_node.data['face'] = node.data['face']
-
-        #Debug the new triple: [ A, B, A]
-        newTriple = [node.value.id,new_node.value.id,duplicate_node.value.id]
-        tripleString = "-".join([ascii_uppercase[x % 26] for x in newTriple])
-        logging.debug("Split {} into {}".format(str(newTriple[0]),tripleString))
-        return new_node, duplicate_node
-
-
-    #--------------------
     def _handleCircleEvent(self,event):
         """
         provided a circle event, add a new vertex to the dcel, 
@@ -369,7 +333,62 @@ class Voronoi:
             self._calculate_circle_events(suc,right=False)
         
 
+    #----------
+    # UTILITIES
+    #----------        
+    def _cleanup_edges(self, edge, new_node, node, duplicate_node):
+        #if there was an edge of closest_arc -> closest_arc.successor: update it
+        #because closest_arc is not adjacent to successor any more, duplicate_node is
+        dup_node_succ = duplicate_node.get_successor()
+        if dup_node_succ:
+            e1 = self._getEdge(node,dup_node_succ)
+            if e1:
+                self._removeEdge(node,dup_node_succ)
+                self._storeEdge(e1,duplicate_node,dup_node_succ)
+                
+        logging.debug("Linking edge from {} to {}".format(node,new_node))
+        self._storeEdge(edge, node, new_node)
+        logging.debug("Linking r-edge from {} to {}".format(new_node,duplicate_node))
+        self._storeEdge(edge.twin, new_node, duplicate_node)
         
+    def _get_closest_arc_node(self, xPos):
+        #search for the breakpoint interval of the beachline
+        closest_arc_node, direction = self.beachline.search(xPos)
+        logging.debug("Closest Arc Triple: {} *{}* {}".format(closest_arc_node.get_predecessor(),
+                                                             closest_arc_node,
+                                                             closest_arc_node.get_successor()))
+        logging.debug("Direction: {}".format(direction))
+        return (closest_arc_node, direction)
+
+    def _remove_obsolete_circle_events(self, node):
+        #remove false alarm circle events
+        if node.left_circle_event is not None:
+            self._delete_circle_event(node.left_circle_event)
+        if node.right_circle_event is not None:
+            self._delete_circle_event(node.right_circle_event)
+
+    def _split_beachline(self, direction, node, arc, event_face):
+        #If site is directly below the arc, or on the right of the arc, add it as a successor
+        if direction is Directions.CENTRE or direction is Directions.RIGHT:
+            new_node = self.beachline.insert_successor(node, arc)
+            duplicate_node = self.beachline.insert_successor(new_node, node.value)
+        else:
+            #otherwise add it as a predecessor
+            new_node = self.beachline.insert_predecessor(node, arc)
+            duplicate_node = self.beachline.insert_predecessor(new_node, node.value)
+        assert(isinstance(new_node, Node))
+        
+        #add in the faces as a data point for the new node and duplicate
+        new_node.data['face'] = event_face
+        duplicate_node.data['face'] = node.data['face']
+
+        #Debug the new triple: [ A, B, A]
+        newTriple = [node.value.id,new_node.value.id,duplicate_node.value.id]
+        tripleString = "-".join([ascii_uppercase[x % 26] for x in newTriple])
+        logging.debug("Split {} into {}".format(str(newTriple[0]),tripleString))
+        return new_node, duplicate_node
+
+
     #-------------------- Fortune Methods
     def _calculate_circle_events(self,node,left=True,right=True):
         """
@@ -383,6 +402,7 @@ class Voronoi:
         #add circle event to events and the relevant leaf
         if left_triple:
             logging.debug("Calc Left Triple: {}".format("-".join([str(x) for x in left_triple])))
+            
         if left and left_triple and left_triple[0].value != left_triple[2].value:
             left_points = [x.value.get_focus() for x in left_triple]
             left_circle = utils.get_circle_3p(*left_points)
@@ -396,6 +416,7 @@ class Voronoi:
 
         if right_triple:
             logging.debug("Calc Right Triple: {}".format("-".join([str(x) for x in right_triple])))
+            
         if right and right_triple and right_triple[0].value != right_triple[2].value:
             right_points = [x.value.get_focus() for x in right_triple]
             right_circle = utils.get_circle_3p(*right_points)
@@ -489,13 +510,3 @@ class Voronoi:
         #heapq.heapify(self.events)
         event.deactivate()
         
-    ## UTILITY METHODS ----------------------------------------
-    #-------------------- Import / Export
-    def save_graph(self,values):
-        with open(self.save_file_name,'wb') as f:
-            pickle.dump(values,f)
-        
-    def load_graph(self):
-        if isfile(self.save_file_name):
-            with open(self.save_file_name,'rb') as f:
-                return pickle.load(f)
