@@ -3,16 +3,13 @@
 """
 import numpy as np
 import numpy.random as random
-import pyqtree
-import IPython
 import heapq
 import pickle
 import logging as root_logger
 import sys
 from os.path import isfile
 from string import ascii_uppercase
-from numpy.linalg import det
-from math import pi, sin, cos, nan
+from math import pi, sin, cos
 
 import cairo_utils as utils
 from cairo_utils import Parabola
