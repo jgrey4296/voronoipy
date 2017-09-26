@@ -1,14 +1,15 @@
+import cairo_utils as utils
 from cairo_utils.dcel import DCEL
 from cairo_utils.dcel.constants import FaceE, EdgeE, VertE
+from cairo_utils.dcel.Line import Line
 from numpy.random import choice, sample, random
 from os.path import isfile, join, exists
 from voronoipy import voronoi
 import IPython
-import cairo_utils as utils
 import numpy as np
 import pickle
 import random as rnd
-from cairo_utils.dcel.Line import Line
+
 
 
 DCEL_PICKLE = "dcel.pkl"
@@ -77,7 +78,7 @@ def constrain_half_edges_to_circle(dcel, radius=RADIUS, centre=CENTRE, replace_w
             elif intersection[1] is None:
                 closest = intersection[0]
             else:
-                closest = intersection[np.argmin(utils.get_distance(np.array(intersection), further))]
+                closest = intersection[np.argmin(utils.math.get_distance(np.array(intersection), further))]
             newVert = dcel.newVertex(*closest)
             orig1, orig2 = he.getVertices()
             he.clearVertices()
@@ -101,27 +102,27 @@ if __name__ == "__main__":
     the_dcel = DCEL.loadfile(DCEL_PICKLE)
     the_dcel.verify_faces_and_edges()
     #Pre MOD
-    utils.clear_canvas(ctx, colour=[0,0,0,1])
-    utils.drawDCEL(ctx, the_dcel, edges=True, faces=False)
+    utils.drawing.clear_canvas(ctx, colour=[0,0,0,1])
+    utils.dcel.dcel_drawing.drawDCEL(ctx, the_dcel, edges=True, faces=False)
     ctx.set_source_rgba(0,1,0,1)
     ctx.set_line_width(0.002)
     utils.drawing.drawCircle(ctx, 0.5, 0.5, RADIUS, fill=False)
-    utils.write_to_png(surface, save_string_unmod)
+    utils.drawing.write_to_png(surface, save_string_unmod)
     #Post MOD
-    utils.clear_canvas(ctx, colour=[0,0,0,1])
-    utils.drawDCEL(ctx, the_dcel, edges=False, faces=True, verts=True)
+    utils.drawing.clear_canvas(ctx, colour=[0,0,0,1])
+    utils.dcel.dcel_drawing.drawDCEL(ctx, the_dcel, edges=False, faces=True, verts=True)
     modify(the_dcel)
-    utils.drawDCEL(ctx, the_dcel, edges=True, faces=False, text=False)
+    utils.dcel.dcel_drawing.drawDCEL(ctx, the_dcel, edges=True, faces=False, text=False)
     ctx.set_source_rgba(0,1,0,1)
     ctx.set_line_width(0.002)
     utils.drawing.drawCircle(ctx, 0.5, 0.5, RADIUS, fill=False)
-    utils.write_to_png(surface, save_string)
+    utils.drawing.write_to_png(surface, save_string)
 
     #finalised faces only:
-    utils.clear_canvas(ctx)
+    utils.drawing.clear_canvas(ctx)
     ctx.set_source_rgba(0,1,0,1)
     ctx.set_line_width(0.002)
     #utils.drawing.drawCircle(ctx, 0.5, 0.5, RADIUS, fill=False)
-    utils.drawDCEL(ctx, the_dcel, faces=True)
-    utils.write_to_png(surface, save_string_faces)
+    utils.dcel.dcel_drawing.drawDCEL(ctx, the_dcel, faces=True)
+    utils.drawing.write_to_png(surface, save_string_faces)
     

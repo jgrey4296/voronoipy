@@ -65,9 +65,9 @@ def generate_voronoi():
         logging.info("-------------------- Relaxing iteration: {}".format(i))
         assert(voronoiInstance.nodeSize == VORONOI_SIZE)
         dcel = voronoiInstance.finalise_DCEL()
-        utils.clear_canvas(ctx)
-        utils.drawDCEL(ctx,dcel)
-        utils.write_to_png(surface,"{}__relaxed_{}".format(savePath,i))
+        utils.drawing.clear_canvas(ctx)
+        utils.dcel.drawing.drawDCEL(ctx,dcel)
+        utils.drawing.write_to_png(surface,"{}__relaxed_{}".format(savePath,i))
         if callable(RELAXATION_AMNT):
             voronoiInstance.relax(amnt=RELAXATION_AMNT())
         else:
@@ -93,9 +93,9 @@ def load_file_and_average():
     
     #Draw
     logging.info("Drawing final diagram")
-    utils.clear_canvas(ctx)
-    utils.drawDCEL(ctx,the_dcel)
-    utils.write_to_png(surface,"{}__FINAL".format(savePath))
+    utils.drawing.clear_canvas(ctx)
+    utils.dcel.drawing.drawDCEL(ctx,the_dcel)
+    utils.drawing.write_to_png(surface,"{}__FINAL".format(savePath))
 #--------------------------------------------------------------------------------
 
 if __name__ == "__main__":

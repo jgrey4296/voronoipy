@@ -47,14 +47,14 @@ class Voronoi_Debug:
         logging.debug("Drawing final voronoi diagram")
         dcel = self.instance.finalise_DCEL()
         if clear:
-            utils.clear_canvas(self.ctx)
+            utils.drawing.clear_canvas(self.ctx)
         self.ctx.set_source_rgba(*COLOUR)
         #draw sites
         for site in self.instance.sites:
-            utils.drawCircle(self.ctx, *site.loc, 0.007)
+            utils.drawing.drawCircle(self.ctx, *site.loc, 0.007)
         #draw faces
-        utils.drawDCEL(self.ctx, dcel, text=text, faces=faces, edges=edges, verts=verts)
-        utils.write_to_png(self.surface, join(self.save_dir, "voronoi_debug"))
+        utils.dcel.dcel_drawing.drawDCEL(self.ctx, dcel, text=text, faces=faces, edges=edges, verts=verts)
+        utils.drawing.write_to_png(self.surface, join(self.save_dir, "voronoi_debug"))
         
 
     def draw_intermediate_states(self, i,
@@ -65,7 +65,7 @@ class Voronoi_Debug:
                                  dcel=False):
         """ Top level function to draw intermediate state of the algorithm """
         logging.info("Drawing intermediate state: {}".format(i))
-        utils.clear_canvas(self.ctx)
+        utils.drawing.clear_canvas(self.ctx)
         if sites:
             self.draw_sites()
         if beachline:
@@ -78,24 +78,24 @@ class Voronoi_Debug:
             #TODO: draw the incomplete lines better
             #backup_dcel_data = self.instance.dcel.export_data()
             #dcelInstance = self.instance.finalise_DCEL()
-            utils.drawDCEL(self.ctx, self.instance.dcel)
+            utils.dcel.dcel_drawing.drawDCEL(self.ctx, self.instance.dcel)
             #self.instance.dcel.import_data(backup_dcel_data)
-        utils.write_to_png(self.surface, join(self.save_dir, "voronoi_intermediate"), i=i)
+        utils.drawing.write_to_png(self.surface, join(self.save_dir, "voronoi_intermediate"), i=i)
 
         
     def draw_sites(self):
         self.ctx.set_source_rgba(*SITE_COLOUR)
         for site in self.instance.sites:
-            utils.drawCircle(self.ctx, *site.loc, SITE_RADIUS)
+            utils.drawwing.drawCircle(self.ctx, *site.loc, SITE_RADIUS)
 
     def draw_circle_events(self):
         for event in self.instance.circles:
             if event.active:
                 self.ctx.set_source_rgba(*CIRCLE_COLOUR)
-                utils.drawCircle(self.ctx, *event.loc, CIRCLE_RADIUS)
+                utils.drawing.drawCircle(self.ctx, *event.loc, CIRCLE_RADIUS)
             else:
                 self.ctx.set_source_rgba(*CIRCLE_COLOUR_INACTIVE)
-                utils.drawCircle(self.ctx, *event.loc, CIRCLE_RADIUS)
+                utils.drawing.drawCircle(self.ctx, *event.loc, CIRCLE_RADIUS)
                 
     def draw_beach_line_components(self):
         #the arcs themselves
@@ -104,7 +104,7 @@ class Voronoi_Debug:
         for arc in self.instance.beachline.arcs_added:
             xys = arc(xs)
             for x,y in xys:
-                utils.drawCircle(self.ctx, x, y, BEACH_RADIUS)
+                utils.drawing.drawCircle(self.ctx, x, y, BEACH_RADIUS)
         #--------------------
         #the frontier:
         # Essentially a horizontal travelling sweep line to draw segments
@@ -127,9 +127,9 @@ class Voronoi_Debug:
                     axys = a.value(xs)
                     bxys = b.value(xs)
                     for x,y in axys:
-                        utils.drawCircle(self.ctx,x,y,BEACH_RADIUS)
+                        utils.drawing.drawCircle(self.ctx,x,y,BEACH_RADIUS)
                     for x,y in bxys:
-                        utils.drawCircle(self.ctx,x,y,BEACH_RADIUS)
+                        utils.drawing.drawCircle(self.ctx,x,y,BEACH_RADIUS)
                     self.ctx.set_source_rgba(*BEACH_LINE_COLOUR2,1)
                     continue
                 #----------
@@ -152,7 +152,7 @@ class Voronoi_Debug:
                 leftmost_x = left_most_intersection
                 frontier_arc = a.value(xs)
                 for x,y in frontier_arc:
-                    utils.drawCircle(self.ctx, x, y, BEACH_RADIUS)
+                    utils.drawing.drawCircle(self.ctx, x, y, BEACH_RADIUS)
 
         if len(chain) > 0 and (leftmost_x is nan or leftmost_x < 1.0):
             if leftmost_x is nan:
@@ -162,7 +162,7 @@ class Voronoi_Debug:
             xs = np.linspace(leftmost_x,1.0,2000)
             frontier_arc = chain[-1].value(xs)
             for x,y in frontier_arc:
-                utils.drawCircle(self.ctx,x,y,BEACH_RADIUS)
+                utils.drawing.drawCircle(self.ctx,x,y,BEACH_RADIUS)
             
     def draw_sweep_line(self):
         if self.instance.sweep_position is None:

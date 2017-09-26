@@ -132,7 +132,7 @@ class Voronoi:
         #Get a line of origin - centroid
         lines = [np.concatenate((x.site, x.getAvgCentroid())) for x in faces]
         #Move along that line toward the centroid
-        newSites = [utils.sampleAlongLine(*x, amnt)[0] for x in lines]
+        newSites = [utils.math.sampleAlongLine(*x, amnt)[0] for x in lines]
         #Combine with excluded faces
         newSites += otherFaceSites
         assert(len(self.dcel.faces) == len(newSites))
@@ -405,9 +405,9 @@ class Voronoi:
             
         if left and left_triple and left_triple[0].value != left_triple[2].value:
             left_points = [x.value.get_focus() for x in left_triple]
-            left_circle = utils.get_circle_3p(*left_points)
-            if left_circle and not utils.isClockwise(*left_points,cartesian=True):
-                left_circle_loc = utils.get_lowest_point_on_circle(*left_circle)
+            left_circle = utils.math.get_circle_3p(*left_points)
+            if left_circle and not utils.math.isClockwise(*left_points,cartesian=True):
+                left_circle_loc = utils.math.get_lowest_point_on_circle(*left_circle)
                 #check the l_t_p/s arent in this circle
                 #note: swapped this to add on the right ftm
                 self._add_circle_event(left_circle_loc,left_triple[1],left_circle[0],left=False)
@@ -419,9 +419,9 @@ class Voronoi:
             
         if right and right_triple and right_triple[0].value != right_triple[2].value:
             right_points = [x.value.get_focus() for x in right_triple]
-            right_circle = utils.get_circle_3p(*right_points)
-            if right_circle and not utils.isClockwise(*right_points,cartesian=True):
-                right_circle_loc = utils.get_lowest_point_on_circle(*right_circle)
+            right_circle = utils.math.get_circle_3p(*right_points)
+            if right_circle and not utils.math.isClockwise(*right_points,cartesian=True):
+                right_circle_loc = utils.math.get_lowest_point_on_circle(*right_circle)
                 #note: swapped this to add on the left ftm
                 self._add_circle_event(right_circle_loc,right_triple[1],right_circle[0])
             else:
