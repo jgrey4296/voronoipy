@@ -21,12 +21,14 @@ imgName = "initialTest"
 DCEL_PICKLE = "dcel.pkl"
 currentTime = time.gmtime()
 FONT_SIZE = 0.03
-VORONOI_SIZE = 100
+VORONOI_SIZE = 200
 RELAXATION_ITER = 3
 #RELAXATION_AMNT = 0.4
 RELAXATION_AMNT = sample
 N = 12
 VORONOI_DEBUG= False
+DRAW_RELAXATIONS = True
+DRAW_FINAL = True
 #format the name of the image to be saved thusly:
 saveString = "{}_{}-{}-{}_{}-{}".format(  imgName,
                                           currentTime.tm_min,
@@ -65,14 +67,15 @@ def generate_voronoi():
         logging.info("-------------------- Relaxing iteration: {}".format(i))
         assert(voronoiInstance.nodeSize == VORONOI_SIZE)
         dcel = voronoiInstance.finalise_DCEL()
-        utils.drawing.clear_canvas(ctx)
-        utils.dcel.drawing.drawDCEL(ctx,dcel)
-        utils.drawing.write_to_png(surface,"{}__relaxed_{}".format(savePath,i))
+        if DRAW_RELAXATIONS:
+            utils.drawing.clear_canvas(ctx)
+            utils.dcel.drawing.drawDCEL(ctx,dcel)
+            utils.drawing.write_to_png(surface,"{}__relaxed_{}".format(savePath,i))
         if callable(RELAXATION_AMNT):
             voronoiInstance.relax(amnt=RELAXATION_AMNT())
         else:
             voronoiInstance.relax(amnt=RELAXATION_AMNT)
-        
+
     logging.info("Finalised Voronoi diagram, proceeding")
     the_dcel = voronoiInstance.finalise_DCEL()
     with open(DCEL_PICKLE,'wb') as f:
@@ -92,10 +95,11 @@ def load_file_and_average():
         x.data = {'fill' : True }
     
     #Draw
-    logging.info("Drawing final diagram")
-    utils.drawing.clear_canvas(ctx)
-    utils.dcel.drawing.drawDCEL(ctx,the_dcel)
-    utils.drawing.write_to_png(surface,"{}__FINAL".format(savePath))
+    if DRAW_FINAL:
+        logging.info("Drawing final diagram")
+        utils.drawing.clear_canvas(ctx)
+        utils.dcel.drawing.drawDCEL(ctx,the_dcel)
+        utils.drawing.write_to_png(surface,"{}__FINAL".format(savePath))
 #--------------------------------------------------------------------------------
 
 if __name__ == "__main__":
