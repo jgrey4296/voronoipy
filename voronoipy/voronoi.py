@@ -172,9 +172,11 @@ class Voronoi:
         #ensure CCW ordering
         self.dcel.fixup_halfedges()
         #Modify/connect edges or mark for cleanup
-        self._complete_faces()
+        self.dcel.complete_faces(self.bbox)
         #cleanup faces
         self.dcel.purge_faces()
+        #todo: cleanup any loose edges/vertices again?
+        
         #verify:
         self.dcel.verify_faces_and_edges()
         return self.dcel
@@ -452,19 +454,14 @@ class Voronoi:
                 assert(False)
             #intersect the breakpoints to find the vertex point
             intersection = a.value.intersect(b.value)
-            if intersection is not None and intersection.shape[0] > 0:
-                newVertex = self.dcel.newVertex(intersection[0,0],intersection[0,1])
-                c.addVertex(newVertex)
-                isInfiniteAfterIntersection = c.isInfinite()
-                if isInfiniteAfterIntersection:
-                    raise Exception("After modification is infinite")
-            else:
+            if intersection is None or intersection.shape[0] < 1:
                 raise Exception("No intersections detected when completing an infinite edge")
-            logging.debug('----')
-
-    def _complete_faces(self):
-        self.dcel.complete_faces(self.bbox)
-        return self.dcel
+            
+            #Create a vertex for the end
+            newVertex = self.dcel.newVertex(intersection[0,0],intersection[0,1])
+            c.addVertex(newVertex)
+            if c.isInfinite():
+                raise Exception("After modification is infinite")
 
             
     #-------------------- Beachline Edge Interaction
