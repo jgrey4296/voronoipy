@@ -391,12 +391,6 @@ class Voronoi:
         logging.debug("Direction: {}".format(direction))
         return (closest_arc_node, direction)
 
-    def _remove_obsolete_circle_events(self, node):
-        #remove false alarm circle events
-        if node.left_circle_event is not None:
-            self._delete_circle_event(node.left_circle_event)
-        if node.right_circle_event is not None:
-            self._delete_circle_event(node.right_circle_event)
 
     def _split_beachline(self, direction, node, arc, event_face):
         #If site is directly below the arc, or on the right of the arc, add it as a successor
@@ -530,10 +524,24 @@ class Voronoi:
         heapq.heappush(self.events,event)
         self.circles.append(event)
 
-    def _delete_circle_event(self,event):
+    def _delete_circle_events(self,node, pre, post, event):
         """ Deactiate a circle event rather than deleting it.
         This means instead of removal and re-heapifying, you just skip the event
         when you come to process it """
-        logging.debug("Deactivating Circle Event: {}".format(event))
-        event.deactivate()
+        logging.debug("Deactivating Circle Event: {}".format(node))
+        if node.left_circle_event is not None:
+            node.left_circle_event.deactivate()
+        if node.right_circle_event is not None:
+            node.right_circle_event.deactivate()
+
+        if pre != NilNode and pre.right_circle_event is not None:
+            pre.right_circle_event.deactivate()
+        if post != NilNode and post.left_circle_event is not None:
+            post.left_circle_event.deactivate()
         
+    def _remove_obsolete_circle_events(self, node):
+        #remove false alarm circle events
+        if node.left_circle_event is not None:
+            node.left_circle_event.deactivate()
+        if node.right_circle_event is not None:
+            node.right_circle_event.deactivate()
