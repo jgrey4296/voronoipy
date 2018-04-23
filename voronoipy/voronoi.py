@@ -344,12 +344,12 @@ class Voronoi:
 
         #delete the node, no longer needed as the arc has reduced to 0
         self.beachline.delete_node(node)
-
+        
         #recheck for new circle events
         if pre:
-            self._calculate_circle_events(pre,left=False)
+            self._calculate_circle_events(pre,left=False, right=True)
         if suc:
-            self._calculate_circle_events(suc,right=False)
+            self._calculate_circle_events(suc,left=True, right=False)
         
 
     #----------
