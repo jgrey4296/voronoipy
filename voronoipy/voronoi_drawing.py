@@ -35,7 +35,7 @@ class Voronoi_Debug:
         self.draw_size = size
         self.draw_n = n
         self.save_dir = directory
-
+        self.bbox = self.instance.bbox
 
     def draw_voronoi_diagram(self,
                              i=None,
@@ -48,7 +48,7 @@ class Voronoi_Debug:
         logging.debug("Drawing final voronoi diagram")
         dcel = self.instance.finalise_DCEL()
         if clear:
-            utils.drawing.clear_canvas(self.ctx)
+            utils.drawing.clear_canvas(self.ctx, bbox=self.bbox)
         self.ctx.set_source_rgba(*COLOUR)
         #draw sites
         for site in self.instance.sites:
@@ -63,10 +63,24 @@ class Voronoi_Debug:
                                  beachline=True,
                                  sweepline=True,
                                  circles=True,
-                                 dcel=False):
+                                 dcel=False,
+                                 text=False,
+                                 face=None,
+                                 indFace=False):
         """ Top level function to draw intermediate state of the algorithm """
         logging.info("Drawing intermediate state: {}".format(i))
-        utils.drawing.clear_canvas(self.ctx)
+        if indFace:
+            for f in self.instance.dcel.faces:
+                self.draw_intermediate_states(f.index,
+                                              face=f,
+                                              text=True,
+                                              sites=sites,
+                                              beachline=beachline,
+                                              sweepline=sweepline,
+                                              circles=circles)
+        
+        utils.drawing.clear_canvas(self.ctx, bbox=self.bbox)
+        
         if sites:
             self.draw_sites()
         if beachline:
@@ -79,7 +93,18 @@ class Voronoi_Debug:
             #TODO: draw the incomplete lines better
             #backup_dcel_data = self.instance.dcel.export_data()
             #dcelInstance = self.instance.finalise_DCEL()
-            utils.dcel.dcel_drawing.drawDCEL(self.ctx, self.instance.dcel)
+            utils.dcel.dcel_drawing.drawDCEL(self.ctx, self.instance.dcel,
+                                             background_colour=[0,0,0,0],
+                                             faces=False,
+                                             edges=True,
+                                             verts=True,
+                                             text=text)
+        if face is not None:
+            utils.dcel.dcel_drawing.draw_dcel_single_face(self.ctx,
+                                                          self.instance.dcel,
+                                                          face,
+                                                          clear=False)
+            
             #self.instance.dcel.import_data(backup_dcel_data)
         utils.drawing.write_to_png(self.surface, join(self.save_dir, "voronoi_intermediate"), i=i)
 
@@ -87,7 +112,7 @@ class Voronoi_Debug:
     def draw_sites(self):
         self.ctx.set_source_rgba(*SITE_COLOUR)
         for site in self.instance.sites:
-            utils.drawwing.drawCircle(self.ctx, *site.loc, SITE_RADIUS)
+            utils.drawing.drawCircle(self.ctx, *site.loc, SITE_RADIUS)
 
     def draw_circle_events(self):
         for event in self.instance.circles:
@@ -101,7 +126,7 @@ class Voronoi_Debug:
     def draw_beach_line_components(self):
         #the arcs themselves
         self.ctx.set_source_rgba(*BEACH_LINE_COLOUR, 0.1)
-        xs = np.linspace(0,1,2000)
+        xs = np.linspace(self.bbox[0], self.bbox[2], NUM_POINTS)
         for arc in self.instance.beachline.arcs_added:
             xys = arc(xs)
             for x,y in xys:
@@ -115,16 +140,17 @@ class Voronoi_Debug:
         chain = self.instance.beachline.get_chain()
         if len(chain) > 1:
             enumerated = list(enumerate(chain))
+            logging.debug("Chain: {}".format("".join([str(x) for x in chain])))
             pairs = zip(enumerated[0:-1],enumerated[1:])
             for (i,a),(j,b) in pairs:
                 logging.debug("Drawing {} -> {}".format(a,b))
                 intersections = a.value.intersect(b.value, self.instance.sweep_position.y())
-                logging.debug("Intersections: ",intersections)
+                logging.debug("Intersections: {}".format(intersections))
                 if len(intersections) == 0:
                     logging.exception("NO INTERSECTION: {} - {}".format(i,j))
                     #Draw the non-intersecting line as red
                     self.ctx.set_source_rgba(*BEACH_NO_INTERSECT_COLOUR)
-                    xs = np.linspace(0, 1.0, 2000)
+                    xs = np.linspace(self.bbox[0], self.bbox[2], NUM_POINTS)
                     axys = a.value(xs)
                     bxys = b.value(xs)
                     for x,y in axys:
