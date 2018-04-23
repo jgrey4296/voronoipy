@@ -506,22 +506,29 @@ class Voronoi:
     #-------------------- Beachline Edge Interaction
     def _storeEdge(self,edge,bp1,bp2):
         """ Store an incomplete edge by the 2 pairs of nodes that define the breakpoints """
-        if (bp1,bp2) in self.halfEdges.keys():
-            raise Exception("Duplicating edge breakpoint")
-        if edge in self.halfEdges.values():
-            raise Exception("Duplicating edge store")
+        assert(isinstance(edge, HalfEdge))
+        assert(isinstance(bp1, Node))
+        assert(isinstance(bp2, Node))
+        if (bp1,bp2) in self.halfEdges.keys() and edge != self.halfEdges[(bp1, bp2)]:
+            raise Exception("Overrighting edge breakpoint: {}, {}".format(bp1, bp2))
         self.halfEdges[(bp1,bp2)] = edge
         
     def _hasEdge(self,bp1,bp2):
+        assert(isinstance(bp1, Node) or bp1 is NilNode)
+        assert(isinstance(bp2, Node) or bp2 is NilNode)
         return (bp1,bp2) in self.halfEdges
 
     def _getEdge(self,bp1,bp2):
+        assert(isinstance(bp1, Node) or bp1 is NilNode)
+        assert(isinstance(bp2, Node) or bp2 is NilNode)
         if self._hasEdge(bp1,bp2):
             return self.halfEdges[(bp1,bp2)]
         else:
             return None
 
     def _removeEdge(self,bp1,bp2):
+        assert(isinstance(bp1, Node))
+        assert(isinstance(bp2, Node))
         if not self._hasEdge(bp1,bp2):
             raise Exception("trying to remove a non-existing edge")
         del self.halfEdges[(bp1,bp2)]
