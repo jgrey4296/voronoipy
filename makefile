@@ -5,14 +5,16 @@ all:
 	python main.py
 
 modify:
-	python modify.py	
+	python modify.py
 
 circle:
 	python circle_mod.py
 
 clean:
+	-rm *.dcel
 	-rm *.pkl
 	-rm imgs/*
+	-rm log.*
 	python main.py
 
 install: libclean uninstall

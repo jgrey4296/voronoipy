@@ -7,6 +7,7 @@ import heapq
 import pickle
 import logging as root_logger
 import sys
+import IPython
 from os.path import isfile
 from string import ascii_uppercase
 from math import pi, sin, cos
@@ -15,9 +16,10 @@ import cairo_utils as utils
 from cairo_utils import Parabola
 from cairo_utils.beachline import BeachLine, NilNode, Node
 from cairo_utils.beachline.operations import Directions
-from cairo_utils.dcel import DCEL
+from cairo_utils.dcel import DCEL, HalfEdge, Face
+from cairo_utils.math import get_distance_raw, bound_line_in_bbox, isClockwise
 
-from .Events import SiteEvent, CircleEvent
+from .Events import SiteEvent, CircleEvent, VEvent
 from .voronoi_drawing import Voronoi_Debug
 
 logging = root_logger.getLogger(__name__)
@@ -28,6 +30,7 @@ SAVENAME = "graph_data.pkl"
 BBOX = np.array([0,0,1,1]) #the bbox of the final image
 EPSILON = sys.float_info.epsilon
 MAX_STEPS = 100000
+CARTESIAN = True
 
 class Voronoi:
     """ Creates a random selection of points, and step by step constructs
@@ -35,12 +38,15 @@ class Voronoi:
     """
     def __init__(self, sizeTuple, num_of_nodes=10, bbox=BBOX, save_name=SAVENAME,
                  debug_draw=False, n=10, max_steps=MAX_STEPS):
+        assert(isinstance(sizeTuple, tuple))
+        assert(isinstance(bbox, np.ndarray))
+        assert(bbox.shape == (4,))
         self.current_step = 0
         self.sX = sizeTuple[0]
         self.sY = sizeTuple[1]
         self.nodeSize = num_of_nodes
         self.max_steps = max_steps
-        #Heap of site/circle events
+        #Min Heap of site/circle events
         self.events = []
         #backup of the original sites
         self.sites = []
@@ -50,7 +56,8 @@ class Voronoi:
         self.halfEdges = {}
         #The bbox of the diagram
         self.bbox = bbox
-
+        VEvent.offset = self.bbox[3] - self.bbox[1]
+        
         #The Beach Line Data Structure
         self.beachline = None
         #The sweep line position
@@ -62,8 +69,7 @@ class Voronoi:
         self.save_file_name = save_name
         
         self.debug_draw = debug_draw
-        if self.debug_draw:
-            self.debug = Voronoi_Debug(n, image_dir, self)
+        self.debug = Voronoi_Debug(n, image_dir, self)
         
     #--------------------
     # PUBLIC METHODS
@@ -83,18 +89,24 @@ class Voronoi:
         """ Create a graph of initial random sites """
         logging.debug("Initialising graph")
         self.reset()
-        
+
         values = data
         if values is None and not rerun:
             values = self.load_graph()
+
+        assert(values is None or isinstance(values, np.ndarray))
+        
             
         #create a (n,2) array of coordinates for the sites, if no data has been loaded
         if values is None or len(values) != self.nodeSize:
             logging.debug("Generating values")
             for n in range(self.nodeSize):
-                newSite = random.random(2)
+                rndAmnt = random.random((1,2))
+                #scale the new site
+                scaler = self.bbox.reshape((2,2)).transpose()
+                newSite = scaler[:,0] + (rndAmnt * (scaler[:,1] - scaler[:,0]))
                 if values is None:
-                    values = np.array([newSite])
+                    values = newSite
                 else:
                     values = np.row_stack((values,newSite))
 
@@ -103,10 +115,10 @@ class Voronoi:
         for site in values:
             #Avoid duplications:
             if (site[0],site[1]) in usedCoords:
-                logging.warn("Skipping: {}".format(site))
+                logging.warn("Skipping Duplicate: {}".format(site))
                 continue
             #Create an empty face for the site
-            futureFace = self.dcel.newFace(site[0],site[1])
+            futureFace = self.dcel.newFace(site)
             event = SiteEvent(site,face=futureFace)
             heapq.heappush(self.events,event)
             self.sites.append(event)
@@ -128,14 +140,19 @@ class Voronoi:
             faces = self.dcel.faces
         #Figure out any faces that are excluded
         faceIndices = set([x.index for x in faces])
-        otherFaceSites = [x.site for x in self.dcel.faces if x.index not in faceIndices]
+        otherFaceSites = np.array([x.site for x in self.dcel.faces if x.index not in faceIndices])
         #Get a line of origin - centroid
-        lines = [np.concatenate((x.site, x.getAvgCentroid())) for x in faces]
+        lines = np.array([np.concatenate((x.site, x.getAvgCentroid())) for x in faces])
         #Move along that line toward the centroid
-        newSites = [utils.math.sampleAlongLine(*x, amnt)[0] for x in lines]
+        newSites = np.array([utils.math.sampleAlongLine(*x, amnt)[0] for x in lines])
         #Combine with excluded faces
-        newSites += otherFaceSites
-        assert(len(self.dcel.faces) == len(newSites))
+        if len(otherFaceSites) > 0 and len(newSites) > 0:
+            totalSites = np.row_stack((newSites, otherFaceSites))
+        elif len(newSites) > 0:
+            totalSites = newSites
+        else:
+            totalSites = otherFaceSites
+        assert(len(self.dcel.faces) == len(totalSites))
         #Setup the datastructures with the new sites
         self.initGraph(data=newSites,rerun=True)
         self.calculate_to_completion()
@@ -148,7 +165,7 @@ class Voronoi:
             logging.debug("Calculating step: {}".format(self.current_step))
             finished = self._calculate()
             if self.debug_draw:
-                self.debug.draw_intermediate_states(self.current_step)
+                self.debug.draw_intermediate_states(self.current_step, dcel=True, text=True)
             self.current_step += 1
 
     def finalise_DCEL(self):
@@ -157,28 +174,25 @@ class Voronoi:
         """
         if bool(self.events):
             logging.warning("Finalising with events still to process")
-        logging.debug("---------- Finalising DCEL")
+        logging.debug("-------------------- Finalising DCEL")
         logging.debug(self.dcel)
         #Not a pure DCEL operation as it requires curve intersection:
         self._complete_edges()
-        #purge obsolete DCEL data:
-        self.dcel.purge_infinite_edges()
+        self.dcel.purge()
         #modify or mark edges outside bbox
-        self.dcel.constrain_half_edges(bbox=self.bbox)
-        #remove edges marked for cleanup
-        self.dcel.purge_edges()
-        #remove vertices with no associated edges
-        self.dcel.purge_vertices()
+        tempbbox = self.bbox + np.array([100,100,-100,-100])
+        self.dcel.constrain_to_bbox(tempbbox, force=True)
+        self.dcel.purge()
+        logging.debug("---------- Constrained to bbox")
         #ensure CCW ordering
-        self.dcel.fixup_halfedges()
-        #Modify/connect edges or mark for cleanup
-        self.dcel.complete_faces(self.bbox)
+        for f in self.dcel.faces:
+            f.fixup(tempbbox)
         #cleanup faces
-        self.dcel.purge_faces()
-        #todo: cleanup any loose edges/vertices again?
-        
-        #verify:
-        self.dcel.verify_faces_and_edges()
+        logging.debug("---------- Fixed up faces")
+        self.dcel.purge()
+        logging.debug("---------- Purged 3")
+        logging.debug(self.dcel)
+        self.dcel.verify_all()
         return self.dcel
 
     def save_graph(self,values):
@@ -252,10 +266,20 @@ class Voronoi:
                                                          event.face)
         
         #Create an edge between the two nodes, without origin points yet
-        logging.debug("Adding edge")
+        logging.debug("Adding edge on side: {}".format(direction))
         node_face = closest_node.data['face']
-        newEdge = self.dcel.newEdge(None, None, face=node_face, twinFace=event.face)
-        self._cleanup_edges(newEdge, new_node, closest_node, duplicate_node)
+        if direction is Directions.LEFT:
+            theFace = event.face
+            twinFace = node_face
+            nodePair = (new_node, closest_node)
+        else:
+            theFace = node_face
+            twinFace = event.face
+            nodePair = (closest_node, new_node)
+        
+        newEdge = self.dcel.newEdge(None, None, face=theFace, twinFace=twinFace)
+        self._storeEdge(newEdge, *nodePair)
+        self._cleanup_edges(direction, newEdge, new_node, closest_node, duplicate_node)
 
         #create circle events:
         self._calculate_circle_events(new_node)
@@ -275,50 +299,43 @@ class Voronoi:
         assert('face' in pre.data)
         assert('face' in suc.data)
 
-        if node.left_circle_event:
-            self._delete_circle_event(node.left_circle_event)
-        if node.right_circle_event:
-            self._delete_circle_event(node.right_circle_event)
-        logging.debug("attempting to remove pre-right circle events for: {}".format(pre))
-        if pre != NilNode and pre.right_circle_event is not None:
-            self._delete_circle_event(pre.right_circle_event)
-        logging.debug("Attempting to remove succ-left circle events for: {}".format(suc))
-        if suc != NilNode and suc.left_circle_event is not None:
-            self._delete_circle_event(suc.left_circle_event)
+        self._delete_circle_events(node, pre, suc, event)
         
         #add the centre of the circle causing the event as a vertex record
         logging.debug("Creating Vertex")
-        newVertex = self.dcel.newVertex(event.vertex[0],event.vertex[1])
+        newVertex = self.dcel.newVertex(event.vertex)
 
         #attach the vertex as a defined point in the half edges for the three faces,
         #these faces are pre<->node and node<->succ
 
         e1 = self._getEdge(pre,node)
         e2 = self._getEdge(node,suc)
+
+        #create two half-edge records for the new breakpoint of the beachline
+        logging.debug("Creating a new half-edge {}-{}".format(pre,suc))
+        newEdge = self.dcel.newEdge(newVertex, None,face=pre.data['face'],twinFace=suc.data['face'])
+
         if e1:
             #predecessor face
             logging.debug("Adding vertex to {}-{}".format(pre,node))
+            assert(e1.face == pre.data['face'])
+            assert(e1.twin.face == node.data['face'])
             e1.addVertex(newVertex)
+            e1.addPrev(newEdge, force=True)
         else:
             logging.debug("No r-edge found for {}-{}".format(pre,node))
+            IPython.embed(simple_prompt=True)
             
         if e2:
             #successor face
             logging.debug("Adding vertex to {}-{}".format(node,suc))
+            assert(e2.twin.face == suc.data['face'])
+            assert(e2.face == node.data['face'])
             e2.addVertex(newVertex)
+            e2.twin.addNext(newEdge.twin, force=True)
         else:
             logging.debug("No r-edge found for {}-{}".format(node,suc))
-
-            
-        #create two half-edge records for the new breakpoint of the beachline
-        logging.debug("Creating a new half-edge {}-{}".format(pre,suc))
-        newEdge = self.dcel.newEdge(None,newVertex,face=suc.data['face'],twinFace=pre.data['face'])
-
-
-        if e1:
-            e1.setPrev(newEdge)
-        if e2:
-            e2.setNext(newEdge)
+            IPython.embed(simple_prompt=True)
         
         #store the new edge, but only for the open breakpoint
         #the breakpoint being the predecessor and successor, now partners following
@@ -327,31 +344,43 @@ class Voronoi:
 
         #delete the node, no longer needed as the arc has reduced to 0
         self.beachline.delete_node(node)
-
+        
         #recheck for new circle events
         if pre:
-            self._calculate_circle_events(pre,left=False)
+            self._calculate_circle_events(pre,left=False, right=True)
         if suc:
-            self._calculate_circle_events(suc,right=False)
+            self._calculate_circle_events(suc,left=True, right=False)
         
 
     #----------
     # UTILITIES
     #----------        
-    def _cleanup_edges(self, edge, new_node, node, duplicate_node):
-        #if there was an edge of closest_arc -> closest_arc.successor: update it
-        #because closest_arc is not adjacent to successor any more, duplicate_node is
-        dup_node_succ = duplicate_node.get_successor()
-        if dup_node_succ:
-            e1 = self._getEdge(node,dup_node_succ)
-            if e1:
-                self._removeEdge(node,dup_node_succ)
-                self._storeEdge(e1,duplicate_node,dup_node_succ)
+    def _cleanup_edges(self, direction, edge, new_node, node, duplicate_node):
+        """ if there was an edge of closest_arc -> closest_arc.successor: update it
+        because closest_arc is not adjacent to successor any more, duplicate_node is """
+        if direction is Directions.LEFT:
+            logging.debug("Cleaning up left")
+            dup_node_sibling = duplicate_node.get_predecessor()
+            if dup_node_sibling is not None:
+                e1 = self._getEdge(dup_node_sibling, node)
+            if e1 is not None:
+                self._removeEdge(dup_node_sibling, node)
+                self._storeEdge(e1,dup_node_sibling, duplicate_node)
+        else:
+            logging.debug("Cleaning up right")
+            dup_node_sibling = duplicate_node.get_successor()
+            if dup_node_sibling is not None:
+                e1 = self._getEdge(node, dup_node_sibling)
+                if e1 is not None:
+                    self._removeEdge(node, dup_node_sibling)
+                    self._storeEdge(e1, duplicate_node, dup_node_sibling)
                 
-        logging.debug("Linking edge from {} to {}".format(node,new_node))
-        self._storeEdge(edge, node, new_node)
-        logging.debug("Linking r-edge from {} to {}".format(new_node,duplicate_node))
-        self._storeEdge(edge.twin, new_node, duplicate_node)
+        if direction is Directions.LEFT:
+            self._storeEdge(edge, new_node, node)
+            self._storeEdge(edge.twin, duplicate_node, new_node)
+        else:
+            self._storeEdge(edge, node, new_node)
+            self._storeEdge(edge.twin, new_node, duplicate_node)
         
     def _get_closest_arc_node(self, xPos):
         #search for the breakpoint interval of the beachline
@@ -362,12 +391,6 @@ class Voronoi:
         logging.debug("Direction: {}".format(direction))
         return (closest_arc_node, direction)
 
-    def _remove_obsolete_circle_events(self, node):
-        #remove false alarm circle events
-        if node.left_circle_event is not None:
-            self._delete_circle_event(node.left_circle_event)
-        if node.right_circle_event is not None:
-            self._delete_circle_event(node.right_circle_event)
 
     def _split_beachline(self, direction, node, arc, event_face):
         #If site is directly below the arc, or on the right of the arc, add it as a successor
@@ -387,7 +410,7 @@ class Voronoi:
         #Debug the new triple: [ A, B, A]
         newTriple = [node.value.id,new_node.value.id,duplicate_node.value.id]
         tripleString = "-".join([ascii_uppercase[x % 26] for x in newTriple])
-        logging.debug("Split {} into {}".format(str(newTriple[0]),tripleString))
+        logging.debug("Split {} into {}".format(ascii_uppercase[newTriple[0] % 26],tripleString))
         return new_node, duplicate_node
 
 
@@ -406,28 +429,30 @@ class Voronoi:
             logging.debug("Calc Left Triple: {}".format("-".join([str(x) for x in left_triple])))
             
         if left and left_triple and left_triple[0].value != left_triple[2].value:
-            left_points = [x.value.get_focus() for x in left_triple]
+            left_points = np.array([x.value.get_focus() for x in left_triple])
             left_circle = utils.math.get_circle_3p(*left_points)
-            if left_circle and not utils.math.isClockwise(*left_points,cartesian=True):
+
+            #possibly use ccw for this, with glpoc from below
+            if left_circle is not None and isClockwise(*left_points):
                 left_circle_loc = utils.math.get_lowest_point_on_circle(*left_circle)
                 #check the l_t_p/s arent in this circle
                 #note: swapped this to add on the right ftm
-                self._add_circle_event(left_circle_loc,left_triple[1],left_circle[0],left=False)
+                self._add_circle_event(left_circle_loc,left_triple[1],left_circle[0],left=True)
             else:
-                logging.debug("Left circle response: {}".format(left_circle))
+                logging.debug("Left points failed: {}".format(left_points))
 
         if right_triple:
             logging.debug("Calc Right Triple: {}".format("-".join([str(x) for x in right_triple])))
             
         if right and right_triple and right_triple[0].value != right_triple[2].value:
-            right_points = [x.value.get_focus() for x in right_triple]
+            right_points = np.array([x.value.get_focus() for x in right_triple])
             right_circle = utils.math.get_circle_3p(*right_points)
-            if right_circle and not utils.math.isClockwise(*right_points,cartesian=True):
+            if right_circle is not None and isClockwise(*right_points):
                 right_circle_loc = utils.math.get_lowest_point_on_circle(*right_circle)
                 #note: swapped this to add on the left ftm
-                self._add_circle_event(right_circle_loc,right_triple[1],right_circle[0])
+                self._add_circle_event(right_circle_loc,right_triple[1],right_circle[0], left=False)
             else:
-                logging.debug("Right circle response: {}".format(right_circle))
+                logging.debug("Right points failed: {}".format(right_points))
 
     def _update_arcs(self,d):
         """ Trigger the update of all stored arcs with a new frontier line position """
@@ -440,7 +465,7 @@ class Voronoi:
         i = 0
         
         #get only the halfedges that are originless, rather than full edges that are infinite
-        i_pairs = [x for x in self.halfEdges.items() if x[1].origin is None]
+        i_pairs = [x for x in self.halfEdges.items() if x[1].isInfinite()]
         logging.debug("Origin-less half edges num: {}".format(len(i_pairs)))
         
         #----
@@ -449,62 +474,93 @@ class Voronoi:
             i += 1
             #a and b are nodes
             logging.debug("{} Infinite Edge resolution: {}-{}, infinite? {}".format(i,a,b,c.isInfinite()))
+            if c.origin is None and c.twin.origin is None:
+                logging.debug("Found an undefined edge, cleaning up")
+                c.markForCleanup()
+                continue
             if not c.isInfinite():
-                logging.debug("An edge that is not infinite")
-                assert(False)
+                continue
+            #raise Exception("An Edge is not infinite")
             #intersect the breakpoints to find the vertex point
             intersection = a.value.intersect(b.value)
-            if intersection is None or intersection.shape[0] < 1:
+            if intersection is None or len(intersection) < 1:
                 raise Exception("No intersections detected when completing an infinite edge")
+            elif len(intersection) == 2:
+                verts = [x for x in c.getVertices() if x is not None]
+                assert(len(verts) == 1)
+                lines = []
+                lines += bound_line_in_bbox(np.array([verts[0].toArray(), intersection[0]]),
+                                        self.bbox)
+                lines += bound_line_in_bbox(np.array([verts[0].toArray(), intersection[1]]),
+                                        self.bbox)
+                distances = np.array([get_distance_raw(*x) for x in lines])
+                minLine = np.argmin(distances)
+                newVertex = self.dcel.newVertex(lines[minLine][1])
+                c.addVertex(newVertex)
             
-            #Create a vertex for the end
-            newVertex = self.dcel.newVertex(intersection[0,0],intersection[0,1])
-            c.addVertex(newVertex)
             if c.isInfinite():
-                raise Exception("After modification is infinite")
+                logging.debug("Edge is still infinite, marking for cleanup")
+                c.markForCleanup()
 
             
     #-------------------- Beachline Edge Interaction
     def _storeEdge(self,edge,bp1,bp2):
         """ Store an incomplete edge by the 2 pairs of nodes that define the breakpoints """
-        if (bp1,bp2) in self.halfEdges.keys():
-            raise Exception("Duplicating edge breakpoint")
-        if edge in self.halfEdges.values():
-            raise Exception("Duplicating edge store")
+        assert(isinstance(edge, HalfEdge))
+        assert(isinstance(bp1, Node))
+        assert(isinstance(bp2, Node))
+        if (bp1,bp2) in self.halfEdges.keys() and edge != self.halfEdges[(bp1, bp2)]:
+            raise Exception("Overrighting edge breakpoint: {}, {}".format(bp1, bp2))
         self.halfEdges[(bp1,bp2)] = edge
         
     def _hasEdge(self,bp1,bp2):
+        assert(isinstance(bp1, Node) or bp1 is NilNode)
+        assert(isinstance(bp2, Node) or bp2 is NilNode)
         return (bp1,bp2) in self.halfEdges
 
     def _getEdge(self,bp1,bp2):
+        assert(isinstance(bp1, Node) or bp1 is NilNode)
+        assert(isinstance(bp2, Node) or bp2 is NilNode)
         if self._hasEdge(bp1,bp2):
             return self.halfEdges[(bp1,bp2)]
         else:
             return None
 
     def _removeEdge(self,bp1,bp2):
+        assert(isinstance(bp1, Node))
+        assert(isinstance(bp2, Node))
         if not self._hasEdge(bp1,bp2):
             raise Exception("trying to remove a non-existing edge")
         del self.halfEdges[(bp1,bp2)]
 
     #-------------------- Circle Event Interaction
     def _add_circle_event(self,loc,sourceNode,voronoiVertex,left=True):
-        if loc[1] < self.sweep_position.y():# or np.allclose(loc[1],self.sweep_position.y()):
-            logging.debug("Breaking out of add circle event: at/beyond sweep position")
+        if loc[1] > self.sweep_position.y():# or np.allclose(loc[1],self.sweep_position.y()):
+            logging.debug("Breaking out of add circle event: Wrong side of Beachline")
             return
-        #if True: #loc[1] > self.sweep_position[0]:
-        if left:   
-            event = CircleEvent(loc,sourceNode,voronoiVertex,i=self.current_step)
-        else:
-            event = CircleEvent(loc,sourceNode,voronoiVertex,left=False,i=self.current_step)
+        event = CircleEvent(loc,sourceNode,voronoiVertex,i=self.current_step, left=left)
         logging.debug("Adding: {}".format(event))
         heapq.heappush(self.events,event)
         self.circles.append(event)
 
-    def _delete_circle_event(self,event):
+    def _delete_circle_events(self,node, pre, post, event):
         """ Deactiate a circle event rather than deleting it.
         This means instead of removal and re-heapifying, you just skip the event
         when you come to process it """
-        logging.debug("Deactivating Circle Event: {}".format(event))
-        event.deactivate()
+        logging.debug("Deactivating Circle Event: {}".format(node))
+        if node.left_circle_event is not None:
+            node.left_circle_event.deactivate()
+        if node.right_circle_event is not None:
+            node.right_circle_event.deactivate()
+
+        if pre != NilNode and pre.right_circle_event is not None:
+            pre.right_circle_event.deactivate()
+        if post != NilNode and post.left_circle_event is not None:
+            post.left_circle_event.deactivate()
         
+    def _remove_obsolete_circle_events(self, node):
+        #remove false alarm circle events
+        if node.left_circle_event is not None:
+            node.left_circle_event.deactivate()
+        if node.right_circle_event is not None:
+            node.right_circle_event.deactivate()
