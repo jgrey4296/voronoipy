@@ -200,7 +200,7 @@ class Voronoi_Debug:
         self.ctx.set_line_width(LINE_WIDTH)
         #a tuple
         sweep_event = self.instance.sweep_position
-        self.ctx.move_to(0.0,sweep_event.y())
-        self.ctx.line_to(1.0,sweep_event.y())
+        self.ctx.move_to(self.bbox[0],sweep_event.y())
+        self.ctx.line_to(self.bbox[2],sweep_event.y())
         self.ctx.close_path()
         self.ctx.stroke()
