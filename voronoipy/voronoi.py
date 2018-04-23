@@ -140,14 +140,19 @@ class Voronoi:
             faces = self.dcel.faces
         #Figure out any faces that are excluded
         faceIndices = set([x.index for x in faces])
-        otherFaceSites = [x.site for x in self.dcel.faces if x.index not in faceIndices]
+        otherFaceSites = np.array([x.site for x in self.dcel.faces if x.index not in faceIndices])
         #Get a line of origin - centroid
-        lines = [np.concatenate((x.site, x.getAvgCentroid())) for x in faces]
+        lines = np.array([np.concatenate((x.site, x.getAvgCentroid())) for x in faces])
         #Move along that line toward the centroid
-        newSites = [utils.math.sampleAlongLine(*x, amnt)[0] for x in lines]
+        newSites = np.array([utils.math.sampleAlongLine(*x, amnt)[0] for x in lines])
         #Combine with excluded faces
-        newSites += otherFaceSites
-        assert(len(self.dcel.faces) == len(newSites))
+        if len(otherFaceSites) > 0 and len(newSites) > 0:
+            totalSites = np.row_stack((newSites, otherFaceSites))
+        elif len(newSites) > 0:
+            totalSites = newSites
+        else:
+            totalSites = otherFaceSites
+        assert(len(self.dcel.faces) == len(totalSites))
         #Setup the datastructures with the new sites
         self.initGraph(data=newSites,rerun=True)
         self.calculate_to_completion()
