@@ -299,50 +299,43 @@ class Voronoi:
         assert('face' in pre.data)
         assert('face' in suc.data)
 
-        if node.left_circle_event:
-            self._delete_circle_event(node.left_circle_event)
-        if node.right_circle_event:
-            self._delete_circle_event(node.right_circle_event)
-        logging.debug("attempting to remove pre-right circle events for: {}".format(pre))
-        if pre != NilNode and pre.right_circle_event is not None:
-            self._delete_circle_event(pre.right_circle_event)
-        logging.debug("Attempting to remove succ-left circle events for: {}".format(suc))
-        if suc != NilNode and suc.left_circle_event is not None:
-            self._delete_circle_event(suc.left_circle_event)
+        self._delete_circle_events(node, pre, suc, event)
         
         #add the centre of the circle causing the event as a vertex record
         logging.debug("Creating Vertex")
-        newVertex = self.dcel.newVertex(event.vertex[0],event.vertex[1])
+        newVertex = self.dcel.newVertex(event.vertex)
 
         #attach the vertex as a defined point in the half edges for the three faces,
         #these faces are pre<->node and node<->succ
 
         e1 = self._getEdge(pre,node)
         e2 = self._getEdge(node,suc)
+
+        #create two half-edge records for the new breakpoint of the beachline
+        logging.debug("Creating a new half-edge {}-{}".format(pre,suc))
+        newEdge = self.dcel.newEdge(newVertex, None,face=pre.data['face'],twinFace=suc.data['face'])
+
         if e1:
             #predecessor face
             logging.debug("Adding vertex to {}-{}".format(pre,node))
+            assert(e1.face == pre.data['face'])
+            assert(e1.twin.face == node.data['face'])
             e1.addVertex(newVertex)
+            e1.addPrev(newEdge, force=True)
         else:
             logging.debug("No r-edge found for {}-{}".format(pre,node))
+            IPython.embed(simple_prompt=True)
             
         if e2:
             #successor face
             logging.debug("Adding vertex to {}-{}".format(node,suc))
+            assert(e2.twin.face == suc.data['face'])
+            assert(e2.face == node.data['face'])
             e2.addVertex(newVertex)
+            e2.twin.addNext(newEdge.twin, force=True)
         else:
             logging.debug("No r-edge found for {}-{}".format(node,suc))
-
-            
-        #create two half-edge records for the new breakpoint of the beachline
-        logging.debug("Creating a new half-edge {}-{}".format(pre,suc))
-        newEdge = self.dcel.newEdge(None,newVertex,face=suc.data['face'],twinFace=pre.data['face'])
-
-
-        if e1:
-            e1.setPrev(newEdge)
-        if e2:
-            e2.setNext(newEdge)
+            IPython.embed(simple_prompt=True)
         
         #store the new edge, but only for the open breakpoint
         #the breakpoint being the predecessor and successor, now partners following
