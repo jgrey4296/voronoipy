@@ -535,14 +535,10 @@ class Voronoi:
 
     #-------------------- Circle Event Interaction
     def _add_circle_event(self,loc,sourceNode,voronoiVertex,left=True):
-        if loc[1] < self.sweep_position.y():# or np.allclose(loc[1],self.sweep_position.y()):
-            logging.debug("Breaking out of add circle event: at/beyond sweep position")
+        if loc[1] > self.sweep_position.y():# or np.allclose(loc[1],self.sweep_position.y()):
+            logging.debug("Breaking out of add circle event: Wrong side of Beachline")
             return
-        #if True: #loc[1] > self.sweep_position[0]:
-        if left:   
-            event = CircleEvent(loc,sourceNode,voronoiVertex,i=self.current_step)
-        else:
-            event = CircleEvent(loc,sourceNode,voronoiVertex,left=False,i=self.current_step)
+        event = CircleEvent(loc,sourceNode,voronoiVertex,i=self.current_step, left=left)
         logging.debug("Adding: {}".format(event))
         heapq.heappush(self.events,event)
         self.circles.append(event)
