@@ -410,7 +410,7 @@ class Voronoi:
         #Debug the new triple: [ A, B, A]
         newTriple = [node.value.id,new_node.value.id,duplicate_node.value.id]
         tripleString = "-".join([ascii_uppercase[x % 26] for x in newTriple])
-        logging.debug("Split {} into {}".format(str(newTriple[0]),tripleString))
+        logging.debug("Split {} into {}".format(ascii_uppercase[newTriple[0] % 26],tripleString))
         return new_node, duplicate_node
 
 
