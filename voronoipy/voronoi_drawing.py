@@ -11,22 +11,23 @@ logging = root_logger.getLogger(__name__)
 COLOUR = [0.2,0.1,0.6,1.0]
 COLOUR_TWO = [1.0,0.2,0.4,0.5]
 SITE_COLOUR = [1,0,0,1]
-SITE_RADIUS = 0.002
+SITE_RADIUS = 10
 CIRCLE_COLOUR = [1,1,0,1]
 CIRCLE_COLOUR_INACTIVE = [0,0,1,1]
-CIRCLE_RADIUS = 0.005
+CIRCLE_RADIUS = 10
 BEACH_LINE_COLOUR = [0,1,0]
 BEACH_LINE_COLOUR2 = [1,1,0]
 BEACH_NO_INTERSECT_COLOUR = [1,0,0,1]
-BEACH_RADIUS = 0.002
+BEACH_RADIUS = 10
 SWEEP_LINE_COLOUR = [0,0,1,1]
-LINE_WIDTH = 0.002
+LINE_WIDTH = 3
+NUM_POINTS = 2000
 
 class Voronoi_Debug:
     """ Contains methods to draw various stages of the voronoi calculation """
 
     def __init__(self, n, directory, instance):
-        surf, ctx, size, n = utils.drawing.setup_cairo(N=n)
+        surf, ctx, size, n = utils.drawing.setup_cairo(N=n, scale=False, cartesian=True)
         assert(isdir(directory))
         self.instance = instance
         self.surface = surf
