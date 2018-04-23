@@ -355,20 +355,32 @@ class Voronoi:
     #----------
     # UTILITIES
     #----------        
-    def _cleanup_edges(self, edge, new_node, node, duplicate_node):
-        #if there was an edge of closest_arc -> closest_arc.successor: update it
-        #because closest_arc is not adjacent to successor any more, duplicate_node is
-        dup_node_succ = duplicate_node.get_successor()
-        if dup_node_succ:
-            e1 = self._getEdge(node,dup_node_succ)
-            if e1:
-                self._removeEdge(node,dup_node_succ)
-                self._storeEdge(e1,duplicate_node,dup_node_succ)
+    def _cleanup_edges(self, direction, edge, new_node, node, duplicate_node):
+        """ if there was an edge of closest_arc -> closest_arc.successor: update it
+        because closest_arc is not adjacent to successor any more, duplicate_node is """
+        if direction is Directions.LEFT:
+            logging.debug("Cleaning up left")
+            dup_node_sibling = duplicate_node.get_predecessor()
+            if dup_node_sibling is not None:
+                e1 = self._getEdge(dup_node_sibling, node)
+            if e1 is not None:
+                self._removeEdge(dup_node_sibling, node)
+                self._storeEdge(e1,dup_node_sibling, duplicate_node)
+        else:
+            logging.debug("Cleaning up right")
+            dup_node_sibling = duplicate_node.get_successor()
+            if dup_node_sibling is not None:
+                e1 = self._getEdge(node, dup_node_sibling)
+                if e1 is not None:
+                    self._removeEdge(node, dup_node_sibling)
+                    self._storeEdge(e1, duplicate_node, dup_node_sibling)
                 
-        logging.debug("Linking edge from {} to {}".format(node,new_node))
-        self._storeEdge(edge, node, new_node)
-        logging.debug("Linking r-edge from {} to {}".format(new_node,duplicate_node))
-        self._storeEdge(edge.twin, new_node, duplicate_node)
+        if direction is Directions.LEFT:
+            self._storeEdge(edge, new_node, node)
+            self._storeEdge(edge.twin, duplicate_node, new_node)
+        else:
+            self._storeEdge(edge, node, new_node)
+            self._storeEdge(edge.twin, new_node, duplicate_node)
         
     def _get_closest_arc_node(self, xPos):
         #search for the breakpoint interval of the beachline
