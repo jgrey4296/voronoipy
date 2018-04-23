@@ -38,12 +38,15 @@ class Voronoi:
     """
     def __init__(self, sizeTuple, num_of_nodes=10, bbox=BBOX, save_name=SAVENAME,
                  debug_draw=False, n=10, max_steps=MAX_STEPS):
+        assert(isinstance(sizeTuple, tuple))
+        assert(isinstance(bbox, np.ndarray))
+        assert(bbox.shape == (4,))
         self.current_step = 0
         self.sX = sizeTuple[0]
         self.sY = sizeTuple[1]
         self.nodeSize = num_of_nodes
         self.max_steps = max_steps
-        #Heap of site/circle events
+        #Min Heap of site/circle events
         self.events = []
         #backup of the original sites
         self.sites = []
@@ -53,7 +56,8 @@ class Voronoi:
         self.halfEdges = {}
         #The bbox of the diagram
         self.bbox = bbox
-
+        VEvent.offset = self.bbox[3] - self.bbox[1]
+        
         #The Beach Line Data Structure
         self.beachline = None
         #The sweep line position
@@ -65,8 +69,7 @@ class Voronoi:
         self.save_file_name = save_name
         
         self.debug_draw = debug_draw
-        if self.debug_draw:
-            self.debug = Voronoi_Debug(n, image_dir, self)
+        self.debug = Voronoi_Debug(n, image_dir, self)
         
     #--------------------
     # PUBLIC METHODS
@@ -86,18 +89,24 @@ class Voronoi:
         """ Create a graph of initial random sites """
         logging.debug("Initialising graph")
         self.reset()
-        
+
         values = data
         if values is None and not rerun:
             values = self.load_graph()
+
+        assert(values is None or isinstance(values, np.ndarray))
+        
             
         #create a (n,2) array of coordinates for the sites, if no data has been loaded
         if values is None or len(values) != self.nodeSize:
             logging.debug("Generating values")
             for n in range(self.nodeSize):
-                newSite = random.random(2)
+                rndAmnt = random.random((1,2))
+                #scale the new site
+                scaler = self.bbox.reshape((2,2)).transpose()
+                newSite = scaler[:,0] + (rndAmnt * (scaler[:,1] - scaler[:,0]))
                 if values is None:
-                    values = np.array([newSite])
+                    values = newSite
                 else:
                     values = np.row_stack((values,newSite))
 
@@ -106,10 +115,10 @@ class Voronoi:
         for site in values:
             #Avoid duplications:
             if (site[0],site[1]) in usedCoords:
-                logging.warn("Skipping: {}".format(site))
+                logging.warn("Skipping Duplicate: {}".format(site))
                 continue
             #Create an empty face for the site
-            futureFace = self.dcel.newFace(site[0],site[1])
+            futureFace = self.dcel.newFace(site)
             event = SiteEvent(site,face=futureFace)
             heapq.heappush(self.events,event)
             self.sites.append(event)
