@@ -165,7 +165,7 @@ class Voronoi:
             logging.debug("Calculating step: {}".format(self.current_step))
             finished = self._calculate()
             if self.debug_draw:
-                self.debug.draw_intermediate_states(self.current_step)
+                self.debug.draw_intermediate_states(self.current_step, dcel=True, text=True)
             self.current_step += 1
 
     def finalise_DCEL(self):
