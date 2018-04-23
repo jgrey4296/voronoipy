@@ -465,7 +465,7 @@ class Voronoi:
         i = 0
         
         #get only the halfedges that are originless, rather than full edges that are infinite
-        i_pairs = [x for x in self.halfEdges.items() if x[1].origin is None]
+        i_pairs = [x for x in self.halfEdges.items() if x[1].isInfinite()]
         logging.debug("Origin-less half edges num: {}".format(len(i_pairs)))
         
         #----
@@ -474,19 +474,33 @@ class Voronoi:
             i += 1
             #a and b are nodes
             logging.debug("{} Infinite Edge resolution: {}-{}, infinite? {}".format(i,a,b,c.isInfinite()))
+            if c.origin is None and c.twin.origin is None:
+                logging.debug("Found an undefined edge, cleaning up")
+                c.markForCleanup()
+                continue
             if not c.isInfinite():
-                logging.debug("An edge that is not infinite")
-                assert(False)
+                continue
+            #raise Exception("An Edge is not infinite")
             #intersect the breakpoints to find the vertex point
             intersection = a.value.intersect(b.value)
-            if intersection is None or intersection.shape[0] < 1:
+            if intersection is None or len(intersection) < 1:
                 raise Exception("No intersections detected when completing an infinite edge")
+            elif len(intersection) == 2:
+                verts = [x for x in c.getVertices() if x is not None]
+                assert(len(verts) == 1)
+                lines = []
+                lines += bound_line_in_bbox(np.array([verts[0].toArray(), intersection[0]]),
+                                        self.bbox)
+                lines += bound_line_in_bbox(np.array([verts[0].toArray(), intersection[1]]),
+                                        self.bbox)
+                distances = np.array([get_distance_raw(*x) for x in lines])
+                minLine = np.argmin(distances)
+                newVertex = self.dcel.newVertex(lines[minLine][1])
+                c.addVertex(newVertex)
             
-            #Create a vertex for the end
-            newVertex = self.dcel.newVertex(intersection[0,0],intersection[0,1])
-            c.addVertex(newVertex)
             if c.isInfinite():
-                raise Exception("After modification is infinite")
+                logging.debug("Edge is still infinite, marking for cleanup")
+                c.markForCleanup()
 
             
     #-------------------- Beachline Edge Interaction
