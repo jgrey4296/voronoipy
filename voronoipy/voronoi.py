@@ -7,6 +7,7 @@ import heapq
 import pickle
 import logging as root_logger
 import sys
+import IPython
 from os.path import isfile
 from string import ascii_uppercase
 from math import pi, sin, cos
@@ -15,9 +16,10 @@ import cairo_utils as utils
 from cairo_utils import Parabola
 from cairo_utils.beachline import BeachLine, NilNode, Node
 from cairo_utils.beachline.operations import Directions
-from cairo_utils.dcel import DCEL
+from cairo_utils.dcel import DCEL, HalfEdge, Face
+from cairo_utils.math import get_distance_raw, bound_line_in_bbox, isClockwise
 
-from .Events import SiteEvent, CircleEvent
+from .Events import SiteEvent, CircleEvent, VEvent
 from .voronoi_drawing import Voronoi_Debug
 
 logging = root_logger.getLogger(__name__)
@@ -28,6 +30,7 @@ SAVENAME = "graph_data.pkl"
 BBOX = np.array([0,0,1,1]) #the bbox of the final image
 EPSILON = sys.float_info.epsilon
 MAX_STEPS = 100000
+CARTESIAN = True
 
 class Voronoi:
     """ Creates a random selection of points, and step by step constructs
