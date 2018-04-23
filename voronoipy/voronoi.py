@@ -174,28 +174,25 @@ class Voronoi:
         """
         if bool(self.events):
             logging.warning("Finalising with events still to process")
-        logging.debug("---------- Finalising DCEL")
+        logging.debug("-------------------- Finalising DCEL")
         logging.debug(self.dcel)
         #Not a pure DCEL operation as it requires curve intersection:
         self._complete_edges()
-        #purge obsolete DCEL data:
-        self.dcel.purge_infinite_edges()
+        self.dcel.purge()
         #modify or mark edges outside bbox
-        self.dcel.constrain_half_edges(bbox=self.bbox)
-        #remove edges marked for cleanup
-        self.dcel.purge_edges()
-        #remove vertices with no associated edges
-        self.dcel.purge_vertices()
+        tempbbox = self.bbox + np.array([100,100,-100,-100])
+        self.dcel.constrain_to_bbox(tempbbox, force=True)
+        self.dcel.purge()
+        logging.debug("---------- Constrained to bbox")
         #ensure CCW ordering
-        self.dcel.fixup_halfedges()
-        #Modify/connect edges or mark for cleanup
-        self.dcel.complete_faces(self.bbox)
+        for f in self.dcel.faces:
+            f.fixup(tempbbox)
         #cleanup faces
-        self.dcel.purge_faces()
-        #todo: cleanup any loose edges/vertices again?
-        
-        #verify:
-        self.dcel.verify_faces_and_edges()
+        logging.debug("---------- Fixed up faces")
+        self.dcel.purge()
+        logging.debug("---------- Purged 3")
+        logging.debug(self.dcel)
+        self.dcel.verify_all()
         return self.dcel
 
     def save_graph(self,values):
