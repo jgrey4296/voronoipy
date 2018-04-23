@@ -166,31 +166,33 @@ class Voronoi_Debug:
                 if leftmost_x is nan:
                     valid_xs = i_xs
                 else:
-                    valid_xs = i_xs[i_xs>leftmost_x]
+                    valid_xs = i_xs[leftmost_x < i_xs]
                 if len(valid_xs) == 0:
                     #nothing valid, try the rest of the arcs
+                    logging.debug("No valid xs, continuing")
                     continue
                 left_most_intersection = valid_xs.min()
                 logging.debug("Arc {0} from {1:.2f} to {2:.2f}".format(i,leftmost_x,left_most_intersection))
                 if leftmost_x is nan:
                     leftmost_x = left_most_intersection - 1
-                xs = np.linspace(leftmost_x, left_most_intersection, 2000)
+                xs = np.linspace(leftmost_x, left_most_intersection, NUM_POINTS)
                 #update the position
                 leftmost_x = left_most_intersection
                 frontier_arc = a.value(xs)
                 for x,y in frontier_arc:
                     utils.drawing.drawCircle(self.ctx, x, y, BEACH_RADIUS)
-
-        if len(chain) > 0 and (leftmost_x is nan or leftmost_x < 1.0):
+                    
+        if len(chain) > 0 and (leftmost_x is nan or leftmost_x < self.bbox[2]):
             if leftmost_x is nan:
                 leftmost_x = 0
             #draw the last arc:
-            logging.debug("Final Arc from {0:.2f} to {1:.2f}".format(leftmost_x,1.0))
-            xs = np.linspace(leftmost_x,1.0,2000)
+            logging.debug("Final Arc: {}".format(str(chain[-1])))
+            logging.debug("Final Arc from {0:.2f} to {1:.2f}".format(leftmost_x,self.bbox[2]))
+            xs = np.linspace(leftmost_x, self.bbox[2],NUM_POINTS)
             frontier_arc = chain[-1].value(xs)
             for x,y in frontier_arc:
                 utils.drawing.drawCircle(self.ctx,x,y,BEACH_RADIUS)
-            
+                
     def draw_sweep_line(self):
         if self.instance.sweep_position is None:
             return
