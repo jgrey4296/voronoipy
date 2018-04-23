@@ -429,28 +429,30 @@ class Voronoi:
             logging.debug("Calc Left Triple: {}".format("-".join([str(x) for x in left_triple])))
             
         if left and left_triple and left_triple[0].value != left_triple[2].value:
-            left_points = [x.value.get_focus() for x in left_triple]
+            left_points = np.array([x.value.get_focus() for x in left_triple])
             left_circle = utils.math.get_circle_3p(*left_points)
-            if left_circle and not utils.math.isClockwise(*left_points,cartesian=True):
+
+            #possibly use ccw for this, with glpoc from below
+            if left_circle is not None and isClockwise(*left_points):
                 left_circle_loc = utils.math.get_lowest_point_on_circle(*left_circle)
                 #check the l_t_p/s arent in this circle
                 #note: swapped this to add on the right ftm
-                self._add_circle_event(left_circle_loc,left_triple[1],left_circle[0],left=False)
+                self._add_circle_event(left_circle_loc,left_triple[1],left_circle[0],left=True)
             else:
-                logging.debug("Left circle response: {}".format(left_circle))
+                logging.debug("Left points failed: {}".format(left_points))
 
         if right_triple:
             logging.debug("Calc Right Triple: {}".format("-".join([str(x) for x in right_triple])))
             
         if right and right_triple and right_triple[0].value != right_triple[2].value:
-            right_points = [x.value.get_focus() for x in right_triple]
+            right_points = np.array([x.value.get_focus() for x in right_triple])
             right_circle = utils.math.get_circle_3p(*right_points)
-            if right_circle and not utils.math.isClockwise(*right_points,cartesian=True):
+            if right_circle is not None and isClockwise(*right_points):
                 right_circle_loc = utils.math.get_lowest_point_on_circle(*right_circle)
                 #note: swapped this to add on the left ftm
-                self._add_circle_event(right_circle_loc,right_triple[1],right_circle[0])
+                self._add_circle_event(right_circle_loc,right_triple[1],right_circle[0], left=False)
             else:
-                logging.debug("Right circle response: {}".format(right_circle))
+                logging.debug("Right points failed: {}".format(right_points))
 
     def _update_arcs(self,d):
         """ Trigger the update of all stored arcs with a new frontier line position """
