@@ -266,10 +266,20 @@ class Voronoi:
                                                          event.face)
         
         #Create an edge between the two nodes, without origin points yet
-        logging.debug("Adding edge")
+        logging.debug("Adding edge on side: {}".format(direction))
         node_face = closest_node.data['face']
-        newEdge = self.dcel.newEdge(None, None, face=node_face, twinFace=event.face)
-        self._cleanup_edges(newEdge, new_node, closest_node, duplicate_node)
+        if direction is Directions.LEFT:
+            theFace = event.face
+            twinFace = node_face
+            nodePair = (new_node, closest_node)
+        else:
+            theFace = node_face
+            twinFace = event.face
+            nodePair = (closest_node, new_node)
+        
+        newEdge = self.dcel.newEdge(None, None, face=theFace, twinFace=twinFace)
+        self._storeEdge(newEdge, *nodePair)
+        self._cleanup_edges(direction, newEdge, new_node, closest_node, duplicate_node)
 
         #create circle events:
         self._calculate_circle_events(new_node)
