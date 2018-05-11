@@ -356,8 +356,9 @@ class Voronoi:
         self._storeEdge(newEdge,pre,suc)
 
         #delete the node, no longer needed as the arc has reduced to 0
-        self.beachline.delete_node(node)
-        
+        logging.debug("Pre-Deletion: {}".format(self.beachline.get_chain()))
+        self.beachline.delete(node)
+        logging.debug("Post-Deletion: {}".format(self.beachline.get_chain()))
         #recheck for new circle events
         if pre:
             self._calculate_circle_events(pre,left=False, right=True)
@@ -415,16 +416,15 @@ class Voronoi:
             #otherwise add it as a predecessor
             new_node = self.beachline.insert_predecessor(node, arc)
             duplicate_node = self.beachline.insert_predecessor(new_node, node.value)
-        assert(isinstance(new_node, Node))
+        assert(isinstance(new_node, rbtree.Node))
         
         #add in the faces as a data point for the new node and duplicate
         new_node.data['face'] = event_face
         duplicate_node.data['face'] = node.data['face']
 
         #Debug the new triple: [ A, B, A]
-        newTriple = [node.value.id,new_node.value.id,duplicate_node.value.id]
-        tripleString = "-".join([ascii_uppercase[x % 26] for x in newTriple])
-        logging.debug("Split {} into {}".format(ascii_uppercase[newTriple[0] % 26],tripleString))
+        tripleString = "-".join([repr(x) for x in [node,new_node,duplicate_node]])
+        logging.debug("Split {} into {}".format(repr(node),tripleString))
         return new_node, duplicate_node
 
 
