@@ -22,14 +22,16 @@ imgPath = "./imgs"
 imgName = "initialTest"
 DCEL_PICKLE = "voronoi"
 currentTime = time.gmtime()
-VORONOI_SIZE = 20
-RELAXATION_ITER = 0
+VORONOI_SIZE = 40
+RELAXATION_ITER = 4
 #RELAXATION_AMNT = 0.4
 RELAXATION_AMNT = sample
 N = 12
-VORONOI_DEBUG = True
+VORONOI_DEBUG = False
 DRAW_RELAXATIONS = True
 DRAW_FINAL = True
+CONSTRAIN_AS_BBOX = True
+CONSTRAIN_RADIUS = 1000.0
 #format the name of the image to be saved thusly:
 saveString = "{}_{}-{}-{}_{}-{}".format(  imgName,
                                           currentTime.tm_min,
@@ -81,7 +83,8 @@ def generate_voronoi():
             voronoiInstance.relax(amnt=RELAXATION_AMNT)
 
     logging.info("Finalised Voronoi diagram, proceeding")
-    the_dcel = voronoiInstance.finalise_DCEL()
+    the_dcel = voronoiInstance.finalise_DCEL(constrain_to_bbox=CONSTRAIN_AS_BBOX,
+                                             radius=CONSTRAIN_RADIUS)
     the_dcel.savefile(DCEL_PICKLE)
 
 #--------------------------------------------------------------------------------
@@ -91,12 +94,12 @@ def load_file_and_average():
     the_dcel = DCEL.loadfile(DCEL_PICKLE)
 
     #Select a number of faces to fill:
-    if len(the_dcel.faces) > 0:
-        NUM_OF_FACES = min(VORONOI_SIZE, 10)
-        aface = choice(the_dcel.faces, NUM_OF_FACES)
+    # if len(the_dcel.faces) > 0:
+    #     NUM_OF_FACES = min(VORONOI_SIZE, 10)
+    #     aface = choice(the_dcel.faces, NUM_OF_FACES)
 
-        for x in aface:
-            x.data = {'fill' : True }
+    #     for x in aface:
+    #         x.data = {'fill' : True }
     
     #Draw
     if DRAW_FINAL:
