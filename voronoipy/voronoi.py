@@ -14,12 +14,13 @@ from math import pi, sin, cos
 
 import cairo_utils as utils
 from cairo_utils import Parabola
-from cairo_utils.beachline import BeachLine, NilNode, Node
-from cairo_utils.beachline.operations import Directions
-from cairo_utils.dcel import DCEL, HalfEdge, Face
-from cairo_utils.math import get_distance_raw, bound_line_in_bbox, isClockwise
+from cairo_utils import rbtree
+from cairo_utils.rbtree.ComparisonFunctions import arc_comparison, Directions, arc_equality
 
-from .Events import SiteEvent, CircleEvent, VEvent
+from cairo_utils.dcel import DCEL, HalfEdge, Face
+from cairo_utils.math import get_distance_raw, bound_line_in_bbox, isClockwise, bbox_centre
+
+from .Events import SiteEvent, CircleEvent, VEvent, CIRCLE_EVENTS, arc_cleanup
 from .voronoi_drawing import Voronoi_Debug
 
 logging = root_logger.getLogger(__name__)
