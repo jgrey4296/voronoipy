@@ -45,6 +45,7 @@ class Voronoi_Debug:
                              verts=False,
                              text=False):
         """ Draw the final diagram """
+        logging.debug("------------------------------")
         logging.debug("Drawing final voronoi diagram")
         dcel = self.instance.finalise_DCEL()
         if clear:
@@ -127,7 +128,8 @@ class Voronoi_Debug:
         #the arcs themselves
         self.ctx.set_source_rgba(*BEACH_LINE_COLOUR, 0.1)
         xs = np.linspace(self.bbox[0], self.bbox[2], NUM_POINTS)
-        for arc in self.instance.beachline.arcs_added:
+        for node in self.instance.beachline.nodes:
+            arc = node.value
             xys = arc(xs)
             for x,y in xys:
                 utils.drawing.drawCircle(self.ctx, x, y, BEACH_RADIUS)
