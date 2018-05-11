@@ -165,13 +165,14 @@ class Voronoi:
         finished = False
         #Max Steps for a guaranteed exit
         while not finished and self.current_step < self.max_steps:
+            logging.debug("----------------------------------------")
             logging.debug("Calculating step: {}".format(self.current_step))
             finished = self._calculate()
             if self.debug_draw:
                 self.debug.draw_intermediate_states(self.current_step, dcel=True, text=True)
             self.current_step += 1
 
-    def finalise_DCEL(self):
+    def finalise_DCEL(self, constrain_to_bbox=True, radius=100):
         """ Cleanup the DCEL of the voronoi diagram, 
             completing faces and constraining to a bbox 
         """
@@ -179,12 +180,19 @@ class Voronoi:
             logging.warning("Finalising with events still to process")
         logging.debug("-------------------- Finalising DCEL")
         logging.debug(self.dcel)
+        
+        self._update_arcs(self.sweep_position.y() - 1000)
         #Not a pure DCEL operation as it requires curve intersection:
         self._complete_edges()
         self.dcel.purge()
-        #modify or mark edges outside bbox
         tempbbox = self.bbox + np.array([100,100,-100,-100])
-        self.dcel.constrain_to_bbox(tempbbox, force=True)
+        #np.array([100,100,-100,-100])
+        if constrain_to_bbox:
+            #modify or mark edges outside bbox
+            self.dcel.constrain_to_bbox(tempbbox, force=True)
+        else:
+            centre = bbox_centre(self.bbox)
+            self.dcel.constrain_to_circle(centre, radius)
         self.dcel.purge()
         logging.debug("---------- Constrained to bbox")
         #ensure CCW ordering
