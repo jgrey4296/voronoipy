@@ -307,8 +307,8 @@ class Voronoi:
         #remove disappearing arc from tree
         #and update breakpoints, remove false alarm circle events
         node = event.source
-        pre = node.get_predecessor()
-        suc = node.get_successor()
+        pre = node.getPredecessor()
+        suc = node.getSuccessor()
         assert('face' in pre.data)
         assert('face' in suc.data)
 
@@ -373,7 +373,7 @@ class Voronoi:
         because closest_arc is not adjacent to successor any more, duplicate_node is """
         if direction is Directions.LEFT:
             logging.debug("Cleaning up left")
-            dup_node_sibling = duplicate_node.get_predecessor()
+            dup_node_sibling = duplicate_node.getPredecessor()
             if dup_node_sibling is not None:
                 e1 = self._getEdge(dup_node_sibling, node)
             if e1 is not None:
@@ -381,7 +381,7 @@ class Voronoi:
                 self._storeEdge(e1,dup_node_sibling, duplicate_node)
         else:
             logging.debug("Cleaning up right")
-            dup_node_sibling = duplicate_node.get_successor()
+            dup_node_sibling = duplicate_node.getSuccessor()
             if dup_node_sibling is not None:
                 e1 = self._getEdge(node, dup_node_sibling)
                 if e1 is not None:
