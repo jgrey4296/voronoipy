@@ -3,6 +3,9 @@
 """
 import IPython
 import numpy as np
+from enum import Enum
+
+CIRCLE_EVENTS = Enum("Circle Event Sides", "LEFT RIGHT")
 
 class VEvent:
     offset = 0
@@ -32,10 +35,10 @@ class CircleEvent(VEvent):
     """ Subclass for representing the lowest point of a circle, 
     calculated from three existing site events """
     def __init__(self,site_loc,sourceNode,voronoiVertex,left=True,i=None):
-        if left and (sourceNode.right_circle_event is not None and sourceNode.right_circle_event.active):
-            raise Exception("Trying to add a circle event to a taken left node: {} : {}".format(sourceNode,sourceNode.right_circle_event))
-        elif not left and (sourceNode.left_circle_event is not None and sourceNode.left_circle_event.active):
-            raise Exception("Trying to add a circle event to a taken right node: {} : {}".format(sourceNode,sourceNode.left_circle_event))
+        if left and (CIRCLE_EVENTS.RIGHT in sourceNode.data and sourceNode.data[CIRCLE_EVENTS.RIGHT].active):
+            raise Exception("Trying to add a circle event to a taken left node: {} : {}".format(sourceNode,sourceNode.data[CIRCLE_EVENTS.RIGHT]))
+        elif not left and (CIRCLE_EVENTS.LEFT in sourceNode.data and sourceNode.data[CIRCLE_EVENTS.LEFT].active):
+            raise Exception("Trying to add a circle event to a taken right node: {} : {}".format(sourceNode,sourceNode.data[CIRCLE_EVENTS.LEFT]))
         super().__init__(site_loc,i=i)
         #The node that will disappear
         self.source = sourceNode
@@ -45,9 +48,9 @@ class CircleEvent(VEvent):
         #is on the left
         self.left = left
         if left:
-            sourceNode.right_circle_event = self
+            sourceNode.data[CIRCLE_EVENTS.RIGHT] = self
         else:
-            sourceNode.left_circle_event = self
+            sourceNode.data[CIRCLE_EVENTS.LEFT] = self
             
     def __str__(self):
         return "Circle Event: {}, Node: {}, Left: {}, Added On Step: {}".format(self.loc,
@@ -59,3 +62,16 @@ class CircleEvent(VEvent):
         """ Deactivating saves on having to reheapify """
         self.active = False
 
+
+
+def arc_cleanup(x):
+    # pred = x.getPredecessor()
+    # succ = x.getSuccessor()
+    # if CIRCLE_EVENTS.RIGHT in pred.data:
+    #     pred.data[CIRCLE_EVENTS.RIGHT].deactivate()
+    # if CIRCLE_EVENTS.LEFT in succ.data:
+    #     succ.data[CIRCLE_EVENTS.LEFT].deactivate()
+    #     pred.data[CIRCLE_EVENTS.RIGHT] = succ.data[CIRCLE_EVENTS.RIGHT]
+    # if pred.value == succ.value:
+    #     return [succ]
+    return []
