@@ -557,18 +557,19 @@ class Voronoi:
         heapq.heappush(self.events,event)
         self.circles.append(event)
 
-    def _delete_circle_events(self,node, pre, post, event):
-        """ Deactiate a circle event rather than deleting it.
+    def _delete_circle_events(self,node, pre=None, post=None, event=None):
+        """ Deactivate a circle event rather than deleting it.
         This means instead of removal and re-heapifying, you just skip the event
         when you come to process it """
         logging.debug("Deactivating Circle Event: {}".format(node))
-        if node.left_circle_event is not None:
-            node.left_circle_event.deactivate()
-        if node.right_circle_event is not None:
-            node.right_circle_event.deactivate()
+        if node is not None:
+            if CIRCLE_EVENTS.LEFT in node.data:
+                node.data[CIRCLE_EVENTS.LEFT].deactivate()
+            if CIRCLE_EVENTS.RIGHT in node.data:
+                node.data[CIRCLE_EVENTS.RIGHT].deactivate()
 
-        if pre != NilNode and pre.right_circle_event is not None:
-            pre.right_circle_event.deactivate()
-        if post != NilNode and post.left_circle_event is not None:
-            post.left_circle_event.deactivate()
+        if pre != None and CIRCLE_EVENTS.RIGHT in pre.data:
+            pre.data[CIRCLE_EVENTS.RIGHT].deactivate()
+        if post != None and CIRCLE_EVENTS.LEFT in post.data:
+            post.data[CIRCLE_EVENTS.LEFT].deactivate()
         
