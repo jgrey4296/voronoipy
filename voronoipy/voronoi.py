@@ -82,7 +82,9 @@ class Voronoi:
         self.circles = []
         self.halfEdges = {}
         self.sweep_position = None
-        self.beachline = BeachLine()
+        self.beachline = rbtree.RBTree(cmpFunc=arc_comparison,
+                                       eqFunc=arc_equality,
+                                       cleanupFunc=arc_cleanup)
         self.current_step = 0
 
         
@@ -253,8 +255,8 @@ class Voronoi:
         xPos = new_arc.fx
 
         #if beachline is empty: add and return
-        if self.beachline.isEmpty():
-            newNode = self.beachline.insert(new_arc)
+        if not bool(self.beachline):
+            newNode = self.beachline.insert(new_arc)[0]
             newNode.data['face'] = event.face
             return
 
@@ -385,11 +387,12 @@ class Voronoi:
         
     def _get_closest_arc_node(self, xPos):
         #search for the breakpoint interval of the beachline
-        closest_arc_node, direction = self.beachline.search(xPos)
-        logging.debug("Closest Arc Triple: {} *{}* {}".format(closest_arc_node.get_predecessor(),
-                                                             closest_arc_node,
-                                                             closest_arc_node.get_successor()))
-        logging.debug("Direction: {}".format(direction))
+        closest_arc_node, direction = self.beachline.search(xPos, closest=True)
+        if closest_arc_node is not None:
+            logging.debug("Closest Arc Triple: {} *{}* {}".format(closest_arc_node.getPredecessor(),
+                                                                  closest_arc_node,
+                                                                  closest_arc_node.getSuccessor()))
+            logging.debug("Direction: {}".format(direction))
         return (closest_arc_node, direction)
 
 
@@ -457,7 +460,7 @@ class Voronoi:
 
     def _update_arcs(self,d):
         """ Trigger the update of all stored arcs with a new frontier line position """
-        self.beachline.update_arcs(d)
+        self.beachline.update_values(lambda v,q: v.update_d(q) ,d)
 
     #-------------------- DCEL Completion
     def _complete_edges(self):
