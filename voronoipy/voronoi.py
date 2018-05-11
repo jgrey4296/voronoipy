@@ -377,9 +377,9 @@ class Voronoi:
             dup_node_sibling = duplicate_node.getPredecessor()
             if dup_node_sibling is not None:
                 e1 = self._getEdge(dup_node_sibling, node)
-            if e1 is not None:
-                self._removeEdge(dup_node_sibling, node)
-                self._storeEdge(e1,dup_node_sibling, duplicate_node)
+                if e1 is not None:
+                    self._removeEdge(dup_node_sibling, node)
+                    self._storeEdge(e1,dup_node_sibling, duplicate_node)
         else:
             logging.debug("Cleaning up right")
             dup_node_sibling = duplicate_node.getSuccessor()
