@@ -270,7 +270,9 @@ class Voronoi:
 
         #Otherwise, slot the arc between existing nodes
         closest_node, direction = self._get_closest_arc_node(xPos)
-        self._remove_obsolete_circle_events(closest_node)
+        assert(closest_node is not None)
+        #remove the obsolete circle event
+        self._delete_circle_events(closest_node)
         new_node, duplicate_node  = self._split_beachline(direction,
                                                          closest_node,
                                                          new_arc,
@@ -570,9 +572,3 @@ class Voronoi:
         if post != NilNode and post.left_circle_event is not None:
             post.left_circle_event.deactivate()
         
-    def _remove_obsolete_circle_events(self, node):
-        #remove false alarm circle events
-        if node.left_circle_event is not None:
-            node.left_circle_event.deactivate()
-        if node.right_circle_event is not None:
-            node.right_circle_event.deactivate()
