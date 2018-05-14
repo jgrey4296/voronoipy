@@ -94,12 +94,12 @@ def load_file_and_average():
     the_dcel = DCEL.loadfile(DCEL_PICKLE)
 
     #Select a number of faces to fill:
-    # if len(the_dcel.faces) > 0:
-    #     NUM_OF_FACES = min(VORONOI_SIZE, 10)
-    #     aface = choice(the_dcel.faces, NUM_OF_FACES)
+    if len(the_dcel.faces) > 0:
+        NUM_OF_FACES = min(VORONOI_SIZE, 10)
+        aface = choice(list(the_dcel.faces), NUM_OF_FACES)
 
-    #     for x in aface:
-    #         x.data = {'fill' : True }
+        for x in aface:
+            x.data = {FaceE.FILL : True }
     
     #Draw
     if DRAW_FINAL:
