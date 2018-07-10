@@ -157,6 +157,7 @@ class Voronoi:
             totalSites = otherFaceSites
         assert(len(self.dcel.faces) == len(totalSites))
         #Setup the datastructures with the new sites
+        self.reset()
         self.initGraph(data=newSites,rerun=True)
         self.calculate_to_completion()
         
@@ -409,7 +410,7 @@ class Voronoi:
 
     def _split_beachline(self, direction, node, arc, event_face):
         #If site is directly below the arc, or on the right of the arc, add it as a successor
-        if direction is Directions.CENTRE or direction is Directions.RIGHT:
+        if direction is Directions.RIGHT:
             new_node = self.beachline.insert_successor(node, arc)
             duplicate_node = self.beachline.insert_successor(new_node, node.value)
         else:
@@ -484,9 +485,11 @@ class Voronoi:
         
         #----
         #i_pairs = [((breakpoint nodes),edge)]
-        for ((a,b),c) in i_pairs:
+        for (bw,c) in i_pairs:
             i += 1
             #a and b are nodes
+            a = bw.bp1
+            b = bw.bp2
             logging.debug("{} Infinite Edge resolution: {}-{}, infinite? {}".format(i,a,b,c.isInfinite()))
             if c.origin is None and c.twin.origin is None:
                 logging.debug("Found an undefined edge, cleaning up")
@@ -523,20 +526,21 @@ class Voronoi:
         assert(isinstance(edge, HalfEdge))
         assert(isinstance(bp1, rbtree.Node))
         assert(isinstance(bp2, rbtree.Node))
-        if (bp1,bp2) in self.halfEdges.keys() and edge != self.halfEdges[(bp1, bp2)]:
+        if self._hasEdge(bp1,bp2) and self._getEdge(bp1,bp2) != edge:
             raise Exception("Overrighting edge breakpoint: {}, {}".format(bp1, bp2))
-        self.halfEdges[(bp1,bp2)] = edge
+        logging.debug("Storing Edge: ({},{}): {}".format(bp1, bp2, edge))
+        self.halfEdges[BreakWrapper(bp1,bp2)] = edge
         
     def _hasEdge(self,bp1,bp2):
         assert(bp1 is None or isinstance(bp1, rbtree.Node))
         assert(bp2 is None or isinstance(bp2, rbtree.Node))
-        return (bp1,bp2) in self.halfEdges
+        return BreakWrapper(bp1,bp2) in self.halfEdges
 
     def _getEdge(self,bp1,bp2):
         assert(bp1 is None or isinstance(bp1, rbtree.Node) )
         assert(bp2 is None or isinstance(bp2, rbtree.Node))
         if self._hasEdge(bp1,bp2):
-            return self.halfEdges[(bp1,bp2)]
+            return self.halfEdges[BreakWrapper(bp1,bp2)]
         else:
             return None
 
@@ -545,7 +549,8 @@ class Voronoi:
         assert(isinstance(bp2, rbtree.Node))
         if not self._hasEdge(bp1,bp2):
             raise Exception("trying to remove a non-existing edge")
-        del self.halfEdges[(bp1,bp2)]
+        logging.debug("Removing Edge: ({},{}) : {}".format(bp1,bp2, self.halfEdges[BreakWrapper(bp1,bp2)]))
+        del self.halfEdges[BreakWrapper(bp1,bp2)]
 
     #-------------------- Circle Event Interaction
     def _add_circle_event(self,loc,sourceNode,voronoiVertex,left=True):
@@ -573,3 +578,20 @@ class Voronoi:
         if post != None and CIRCLE_EVENTS.LEFT in post.data:
             post.data[CIRCLE_EVENTS.LEFT].deactivate()
         
+class BreakWrapper:
+    """ A Simple Breakpoint Wrapper """
+
+    def __init__(self, bp1, bp2):
+        self.bp1 = bp1
+        self.bp2 = bp2
+        
+    def __eq__(self, other):
+        assert(isinstance(other, BreakWrapper))
+        if self.bp1 == other.bp1 and self.bp2 == other.bp2:
+            return True
+        if self.bp1.value == other.bp1.value and self.bp2.value == other.bp2.value:
+            return True
+        return False
+
+    def __hash__(self):
+        return hash((self.bp1, self.bp2))
