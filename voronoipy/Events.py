@@ -64,14 +64,3 @@ class CircleEvent(VEvent):
 
 
 
-def arc_cleanup(x):
-    # pred = x.getPredecessor()
-    # succ = x.getSuccessor()
-    # if CIRCLE_EVENTS.RIGHT in pred.data:
-    #     pred.data[CIRCLE_EVENTS.RIGHT].deactivate()
-    # if CIRCLE_EVENTS.LEFT in succ.data:
-    #     succ.data[CIRCLE_EVENTS.LEFT].deactivate()
-    #     pred.data[CIRCLE_EVENTS.RIGHT] = succ.data[CIRCLE_EVENTS.RIGHT]
-    # if pred.value == succ.value:
-    #     return [succ]
-    return []
