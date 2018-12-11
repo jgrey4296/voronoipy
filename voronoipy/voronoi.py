@@ -20,7 +20,7 @@ from cairo_utils.rbtree.ComparisonFunctions import arc_comparison, Directions, a
 from cairo_utils.dcel import DCEL, HalfEdge, Face
 from cairo_utils.math import get_distance_raw, bound_line_in_bbox, isClockwise, bbox_centre
 
-from .Events import SiteEvent, CircleEvent, VEvent, CIRCLE_EVENTS, arc_cleanup
+from .Events import SiteEvent, CircleEvent, VEvent, CIRCLE_EVENTS
 from .voronoi_drawing import Voronoi_Debug
 
 logging = root_logger.getLogger(__name__)
@@ -83,8 +83,8 @@ class Voronoi:
         self.halfEdges = {}
         self.sweep_position = None
         self.beachline = rbtree.RBTree(cmpFunc=arc_comparison,
-                                       eqFunc=arc_equality,
-                                       cleanupFunc=arc_cleanup)
+                                       eqFunc=arc_equality)
+
         self.current_step = 0
 
         
@@ -117,9 +117,12 @@ class Voronoi:
         usedCoords = []
         for site in values:
             #Avoid duplications:
-            if (site[0],site[1]) in usedCoords:
-                logging.warn("Skipping Duplicate: {}".format(site))
-                continue
+            try:
+                if (site[0],site[1]) in usedCoords:
+                    logging.warn("Skipping Duplicate: {}".format(site))
+                    continue
+            except:
+                IPython.embed(simple_prompt=True)
             #Create an empty face for the site
             futureFace = self.dcel.newFace(site)
             event = SiteEvent(site,face=futureFace)
@@ -147,7 +150,7 @@ class Voronoi:
         #Get a line of origin - centroid
         lines = np.array([np.concatenate((x.site, x.getAvgCentroid())) for x in faces])
         #Move along that line toward the centroid
-        newSites = np.array([utils.math.sampleAlongLine(*x, amnt)[0] for x in lines])
+        newSites = utils.math.sampleAlongLine(lines, amnt).reshape((len(lines),2))
         #Combine with excluded faces
         if len(otherFaceSites) > 0 and len(newSites) > 0:
             totalSites = np.row_stack((newSites, otherFaceSites))
